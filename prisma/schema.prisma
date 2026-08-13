@@ -1,0 +1,338 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  binaryTargets = ["native", "debian-openssl-3.0.x", "linux-musl-arm64-openssl-3.0.x"]
+}
+
+enum Role {
+  OWNER
+  USER
+}
+
+enum ClientSource {
+  TELEGRAM
+  INSTAGRAM
+  FRIEND
+  REPEAT_CLIENT
+  OTHER
+}
+
+enum FilamentMaterial {
+  PLA
+  PETG
+  ABS
+  ASA
+  TPU
+  OTHER
+}
+
+enum OrderStatus {
+  CREATED
+  DESIGN
+  PRINTING
+  PRINTED
+  COMPLETED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  UNPAID
+  PARTIALLY_PAID
+  PAID
+}
+
+enum TransactionType {
+  INCOME
+  EXPENSE
+}
+
+enum ExpenseCategory {
+  FILAMENT
+  ELECTRICITY
+  PRINTER_PARTS
+  TOOLS
+  DELIVERY
+  OTHER
+}
+
+enum PrinterManufacturer {
+  BAMBU_LAB
+  ANYCUBIC
+  OTHER
+}
+
+enum PrinterIntegrationType {
+  MANUAL
+  BAMBUDDY
+  ANYCUBIC
+  OTHER
+}
+
+enum PrintJobStatus {
+  QUEUED
+  PRINTING
+  PAUSED
+  FINISHED
+  FAILED
+  CANCELLED
+}
+
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  telegramId       BigInt   @unique @map("telegram_id")
+  telegramUsername String?  @map("telegram_username")
+  firstName        String?  @map("first_name")
+  lastName         String?  @map("last_name")
+  role             Role     @default(USER)
+  isActive         Boolean  @default(true) @map("is_active")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  createdOrders       Order[]        @relation("OrderCreatedBy")
+  updatedOrders       Order[]        @relation("OrderUpdatedBy")
+  createdPayments     Payment[]
+  createdTransactions Transaction[]
+  orderEvents         OrderEvent[]
+
+  @@map("users")
+}
+
+model Client {
+  id                String       @id @default(uuid()) @db.Uuid
+  name              String
+  telegramUsername  String?      @map("telegram_username")
+  instagramUsername String?      @map("instagram_username")
+  phone             String?
+  source            ClientSource @default(OTHER)
+  notes             String?
+  metadata          Json?
+  deletedAt         DateTime?    @map("deleted_at")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  orders Order[]
+
+  @@index([name])
+  @@map("clients")
+}
+
+model Filament {
+  id            String           @id @default(uuid()) @db.Uuid
+  brand         String
+  name          String
+  material      FilamentMaterial @default(PLA)
+  color         String?
+  pricePerSpool Int              @map("price_per_spool")
+  spoolWeightG  Int              @map("spool_weight_g")
+  costPerGram   Decimal          @map("cost_per_gram") @db.Decimal(10, 4)
+  stockG        Int?             @map("stock_g")
+  notes         String?
+  deletedAt     DateTime?        @map("deleted_at")
+  createdAt     DateTime         @default(now()) @map("created_at")
+  updatedAt     DateTime         @updatedAt @map("updated_at")
+
+  projectFilaments ProjectFilament[]
+
+  @@map("filaments")
+}
+
+model Project {
+  id               String    @id @default(uuid()) @db.Uuid
+  name             String
+  description      String?
+  modelUrl         String?   @map("model_url")
+  imageUrl         String?   @map("image_url")
+  sizeXMm          Int?      @map("size_x_mm")
+  sizeYMm          Int?      @map("size_y_mm")
+  sizeZMm          Int?      @map("size_z_mm")
+  printTimeMinutes Int?      @map("print_time_minutes")
+  defaultCost      Int       @default(0) @map("default_cost")
+  defaultPrice     Int       @default(0) @map("default_price")
+  weightG          Int       @default(0) @map("weight_g")
+  extraCost        Int       @default(0) @map("extra_cost")
+  notes            String?
+  metadata         Json?
+  deletedAt        DateTime? @map("deleted_at")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  projectFilaments ProjectFilament[]
+  orderItems       OrderItem[]
+
+  @@index([name])
+  @@map("projects")
+}
+
+model ProjectFilament {
+  id         String @id @default(uuid()) @db.Uuid
+  projectId  String @map("project_id") @db.Uuid
+  filamentId String @map("filament_id") @db.Uuid
+  grams      Int
+
+  project  Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filament Filament @relation(fields: [filamentId], references: [id], onDelete: Restrict)
+
+  @@map("project_filaments")
+}
+
+model Order {
+  id              String        @id @default(uuid()) @db.Uuid
+  orderNumber     Int           @unique @default(autoincrement()) @map("order_number")
+  clientId        String        @map("client_id") @db.Uuid
+  status          OrderStatus   @default(CREATED)
+  createdById     String?       @map("created_by_id") @db.Uuid
+  updatedById     String?       @map("updated_by_id") @db.Uuid
+  deadline        DateTime?
+  calculatedCost  Int           @default(0) @map("calculated_cost")
+  calculatedPrice Int           @default(0) @map("calculated_price")
+  finalPrice      Int           @default(0) @map("final_price")
+  comment         String?
+  paymentStatus   PaymentStatus @default(UNPAID) @map("payment_status")
+  metadata        Json?
+  createdAt       DateTime      @default(now()) @map("created_at")
+  updatedAt       DateTime      @updatedAt @map("updated_at")
+
+  client       Client        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  createdBy    User?         @relation("OrderCreatedBy", fields: [createdById], references: [id])
+  updatedBy    User?         @relation("OrderUpdatedBy", fields: [updatedById], references: [id])
+  items        OrderItem[]
+  payments     Payment[]
+  transactions Transaction[]
+  printJobs    PrintJob[]
+  events       OrderEvent[]
+
+  @@index([status])
+  @@index([deadline])
+  @@index([createdAt])
+  @@index([clientId])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String   @id @default(uuid()) @db.Uuid
+  orderId             String   @map("order_id") @db.Uuid
+  projectId           String?  @map("project_id") @db.Uuid
+  projectNameSnapshot String   @map("project_name_snapshot")
+  quantity            Int      @default(1)
+  unitCost            Int      @map("unit_cost")
+  unitPrice           Int      @map("unit_price")
+  totalCost           Int      @map("total_cost")
+  totalPrice          Int      @map("total_price")
+  comment             String?
+  createdAt           DateTime @default(now()) @map("created_at")
+  updatedAt           DateTime @updatedAt @map("updated_at")
+
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  printJobs PrintJob[]
+
+  @@map("order_items")
+}
+
+model Payment {
+  id          String   @id @default(uuid()) @db.Uuid
+  orderId     String   @map("order_id") @db.Uuid
+  amount      Int
+  paidAt      DateTime @default(now()) @map("paid_at")
+  comment     String?
+  createdById String?  @map("created_by_id") @db.Uuid
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  order     Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  createdBy User? @relation(fields: [createdById], references: [id])
+
+  @@index([orderId])
+  @@map("payments")
+}
+
+model Transaction {
+  id          String          @id @default(uuid()) @db.Uuid
+  type        TransactionType
+  category    ExpenseCategory
+  amount      Int
+  orderId     String?         @map("order_id") @db.Uuid
+  date        DateTime        @default(now())
+  comment     String?
+  createdById String?         @map("created_by_id") @db.Uuid
+  createdAt   DateTime        @default(now()) @map("created_at")
+  updatedAt   DateTime        @updatedAt @map("updated_at")
+
+  order     Order? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  createdBy User?  @relation(fields: [createdById], references: [id])
+
+  @@map("transactions")
+}
+
+model Printer {
+  id              String                 @id @default(uuid()) @db.Uuid
+  name            String
+  manufacturer    PrinterManufacturer    @default(OTHER)
+  model           String
+  serialNumber    String?                @map("serial_number")
+  integrationType PrinterIntegrationType @default(MANUAL) @map("integration_type")
+  externalId      String?                @map("external_id")
+  isActive        Boolean                @default(true) @map("is_active")
+  lastStatus      String?                @map("last_status")
+  lastSeenAt      DateTime?              @map("last_seen_at")
+  metadata        Json?
+  createdAt       DateTime               @default(now()) @map("created_at")
+  updatedAt       DateTime               @updatedAt @map("updated_at")
+
+  printJobs PrintJob[]
+
+  @@map("printers")
+}
+
+model PrintJob {
+  id                   String         @id @default(uuid()) @db.Uuid
+  orderId              String         @map("order_id") @db.Uuid
+  orderItemId          String?        @map("order_item_id") @db.Uuid
+  printerId            String         @map("printer_id") @db.Uuid
+  status               PrintJobStatus @default(QUEUED)
+  quantity             Int?
+  estimatedTimeMinutes Int?           @map("estimated_time_minutes")
+  startedAt            DateTime?      @map("started_at")
+  finishedAt           DateTime?      @map("finished_at")
+  externalJobId        String?        @map("external_job_id")
+  filename             String?
+  comment              String?
+  metadata             Json?
+  createdAt            DateTime       @default(now()) @map("created_at")
+  updatedAt            DateTime       @updatedAt @map("updated_at")
+
+  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  printer   Printer    @relation(fields: [printerId], references: [id], onDelete: Restrict)
+
+  @@index([printerId])
+  @@index([status])
+  @@map("print_jobs")
+}
+
+model OrderEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  orderId   String   @map("order_id") @db.Uuid
+  userId    String?  @map("user_id") @db.Uuid
+  eventType String   @map("event_type")
+  oldValue  Json?    @map("old_value")
+  newValue  Json?    @map("new_value")
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  user  User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@map("order_events")
+}
+
+model SystemSetting {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_settings")
+}

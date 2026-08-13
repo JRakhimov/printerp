@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: printerp_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: printerp
+      POSTGRES_PASSWORD: printerp_secret
+      POSTGRES_DB: printerp_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U printerp -d printerp_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: printerp_api
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: "postgresql://printerp:printerp_secret@postgres:5432/printerp_db?schema=public"
+      PORT: 3000
+      NODE_ENV: ${NODE_ENV:-development}
+      DEV_BYPASS_AUTH: ${DEV_BYPASS_AUTH:-true}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-123456789:ABCdefGHIjklMNOpqrsTUVwxyZ}
+      INITIAL_OWNER_TELEGRAM_ID: ${INITIAL_OWNER_TELEGRAM_ID:-123456789}
+      JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production-3d-print-erp}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: printerp_web
+    restart: unless-stopped
+    ports:
+      - "5173:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
