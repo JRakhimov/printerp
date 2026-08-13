@@ -38,15 +38,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
 
-      // In production mode, if opened in a regular browser outside Telegram Mini App
-      if (!telegramInitData && import.meta.env.PROD) {
-        setIsAccessDenied(true);
-        setErrorMessage('Пожалуйста, откройте приложение внутри Telegram Mini App.');
-        setIsLoading(false);
-        return;
-      }
-
-      // Development fallback if running outside Telegram in dev mode
+      // Development fallback if running outside Telegram
       const initDataPayload = telegramInitData || 'dev_user_123456789';
 
       // 2. Request backend authentication
@@ -60,9 +52,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(authUser);
     } catch (err: any) {
       console.error('Authentication error:', err);
-      if (err.response?.status === 403) {
+      if (err.response?.status === 403 || err.response?.status === 401) {
         setIsAccessDenied(true);
-        setErrorMessage(err.response?.data?.error?.message || 'Access Denied: Telegram ID missing from allowlist');
+        const serverMsg = err.response?.data?.error?.message || err.response?.data?.message;
+        setErrorMessage(
+          serverMsg && !serverMsg.toLowerCase().includes('initdata')
+            ? serverMsg
+            : 'Пожалуйста, откройте приложение внутри Telegram Mini App.'
+        );
       } else {
         setErrorMessage(err.response?.data?.error?.message || 'Failed to authenticate with backend server');
       }

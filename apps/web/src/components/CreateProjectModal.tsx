@@ -173,7 +173,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                     <select
                       value={row.filamentId}
                       onChange={(e) => updateFilamentRow(idx, 'filamentId', e.target.value)}
-                      className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                      className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white truncate focus:border-indigo-500 focus:outline-none"
                     >
                       {(filaments || []).map((fil) => (
                         <option key={fil.id} value={fil.id}>
@@ -182,21 +182,22 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                       ))}
                     </select>
 
-                    <div className="w-24 flex items-center">
+                    <div className="w-28 sm:w-32 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-indigo-500">
                       <input
                         type="number"
                         value={row.grams}
                         onChange={(e) => updateFilamentRow(idx, 'grams', e.target.value)}
                         placeholder="Grams"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                        className="w-full min-w-0 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       />
-                      <span className="text-[11px] text-slate-400 ml-1">g</span>
+                      <span className="text-[11px] font-semibold text-slate-400 ml-1 shrink-0">g</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => removeFilamentRow(idx)}
-                      className="text-slate-500 hover:text-red-400 p-1"
+                      className="text-slate-500 hover:text-red-400 p-1 shrink-0"
+                      title="Remove Filament"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

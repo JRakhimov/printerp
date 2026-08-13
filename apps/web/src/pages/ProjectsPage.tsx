@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { useProjects, useDeleteProject } from '../hooks/useProjects';
+import { useProjects, useDeleteProject, Project } from '../hooks/useProjects';
 import { CreateProjectModal } from '../components/CreateProjectModal';
 import { ProjectDetailModal } from '../components/ProjectDetailModal';
-import { Box, Plus, Layers, Search, Clock, Trash2, Loader2, DollarSign, ExternalLink, Image as ImageIcon } from 'lucide-react';
+import { Box, Plus, Layers, Search, Clock, Trash2, Loader2, DollarSign, ExternalLink, Image as ImageIcon, Pencil } from 'lucide-react';
 
 export const ProjectsPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [projectModalMode, setProjectModalMode] = useState<'view' | 'edit'>('view');
 
   const { data: projects, isLoading } = useProjects(search);
   const deleteProject = useDeleteProject();
@@ -17,6 +18,16 @@ export const ProjectsPage: React.FC = () => {
     if (confirm(`Are you sure you want to delete project "${name}"?`)) {
       await deleteProject.mutateAsync(id);
     }
+  };
+
+  const handleOpenDetail = (id: string, mode: 'view' | 'edit' = 'view') => {
+    setSelectedProjectId(id);
+    setProjectModalMode(mode);
+  };
+
+  const handleEdit = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    handleOpenDetail(id, 'edit');
   };
 
   return (
@@ -69,8 +80,8 @@ export const ProjectsPage: React.FC = () => {
         {projects?.map((project) => (
           <div
             key={project.id}
-            onClick={() => setSelectedProjectId(project.id)}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-indigo-500/50 transition cursor-pointer"
+            onClick={() => handleOpenDetail(project.id, 'view')}
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-indigo-500/50 transition cursor-pointer group"
           >
             <div className="flex items-start justify-between gap-3">
               {project.imageUrl && (
@@ -85,7 +96,7 @@ export const ProjectsPage: React.FC = () => {
               )}
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold text-white">{project.name}</h3>
+                  <h3 className="text-sm font-bold text-white group-hover:text-indigo-400 transition">{project.name}</h3>
                   {project.modelUrl && (
                     <ExternalLink className="w-3 h-3 text-indigo-400 shrink-0" />
                   )}
@@ -95,13 +106,21 @@ export const ProjectsPage: React.FC = () => {
                 )}
               </div>
 
-              <div className="flex items-center space-x-2 shrink-0">
+              <div className="flex items-center space-x-1.5 shrink-0">
                 <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-1 rounded-xl border border-emerald-500/20">
                   {Number(project.defaultPrice).toLocaleString('ru-RU')} сум
                 </span>
                 <button
+                  onClick={(e) => handleEdit(e, project.id)}
+                  className="text-slate-400 hover:text-indigo-400 p-1"
+                  title="Edit Model"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+                <button
                   onClick={(e) => handleDelete(e, project.id, project.name)}
                   className="text-slate-500 hover:text-red-400 p-1"
+                  title="Delete Model"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -151,7 +170,11 @@ export const ProjectsPage: React.FC = () => {
       </div>
 
       <CreateProjectModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      <ProjectDetailModal projectId={selectedProjectId} onClose={() => setSelectedProjectId(null)} />
+      <ProjectDetailModal
+        projectId={selectedProjectId}
+        initialMode={projectModalMode}
+        onClose={() => setSelectedProjectId(null)}
+      />
     </div>
   );
 };
