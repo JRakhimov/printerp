@@ -78,7 +78,7 @@ export class ProjectsService {
           },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { name: 'asc' },
     });
   }
 

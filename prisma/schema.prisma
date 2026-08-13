@@ -107,6 +107,7 @@ model Client {
   telegramUsername  String?      @map("telegram_username")
   instagramUsername String?      @map("instagram_username")
   phone             String?
+  city              String?
   source            ClientSource @default(OTHER)
   notes             String?
   metadata          Json?

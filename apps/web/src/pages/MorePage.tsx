@@ -3,10 +3,12 @@ import { useClients, useDeleteClient } from '../hooks/useClients';
 import { useFilaments, useDeleteFilament } from '../hooks/useFilaments';
 import { CreateClientModal } from '../components/CreateClientModal';
 import { CreateFilamentModal } from '../components/CreateFilamentModal';
+import { EditFilamentModal } from '../components/EditFilamentModal';
 import { ClientDetailModal } from '../components/ClientDetailModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import { FinancePage } from './FinancePage';
 import { SettingsPage } from './SettingsPage';
+import { Filament } from '../hooks/useFilaments';
 import {
   Users,
   Palette,
@@ -21,6 +23,8 @@ import {
   Phone,
   Send,
   Instagram,
+  MapPin,
+  Pencil,
 } from 'lucide-react';
 
 type SubView = 'menu' | 'clients' | 'filaments' | 'finance' | 'settings';
@@ -34,6 +38,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
   const [search, setSearch] = useState('');
   const [isClientModalOpen, setIsClientModalOpen] = useState(false);
   const [isFilamentModalOpen, setIsFilamentModalOpen] = useState(false);
+  const [selectedFilament, setSelectedFilament] = useState<Filament | null>(null);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
 
@@ -145,6 +150,12 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                       {client.phone}
                     </span>
                   )}
+                  {client.city && (
+                    <span className="flex items-center gap-1 text-amber-400 font-medium">
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      {client.city}
+                    </span>
+                  )}
                 </div>
               </div>
               <button
@@ -216,17 +227,19 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
           {filamentsQuery.data?.map((fil) => (
             <div
               key={fil.id}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 hover:border-slate-700 transition"
+              onClick={() => setSelectedFilament(fil)}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 hover:border-indigo-500/50 transition cursor-pointer group"
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-2.5">
                   <span
-                    className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm"
+                    className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0"
                     style={{ backgroundColor: fil.color || '#3b82f6' }}
                   />
                   <div>
-                    <h3 className="text-sm font-bold text-white">
+                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5 group-hover:text-indigo-400 transition">
                       {fil.brand} {fil.name}
+                      <Pencil className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100 transition" />
                     </h3>
                     <p className="text-xs text-slate-400">{fil.material} • {fil.spoolWeightG}g spool</p>
                   </div>
@@ -240,6 +253,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                   <button
                     onClick={(e) => handleDeleteFilament(e, fil.id, `${fil.brand} ${fil.name}`)}
                     className="text-slate-500 hover:text-red-400 p-1 ml-1"
+                    title="Delete Filament"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
                   </button>
@@ -257,6 +271,11 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
         </div>
 
         <CreateFilamentModal isOpen={isFilamentModalOpen} onClose={() => setIsFilamentModalOpen(false)} />
+        <EditFilamentModal
+          filament={selectedFilament}
+          isOpen={!!selectedFilament}
+          onClose={() => setSelectedFilament(null)}
+        />
       </div>
     );
   }

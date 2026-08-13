@@ -20,6 +20,7 @@ export class ClientsService {
                 { telegramUsername: { contains: search, mode: 'insensitive' } },
                 { instagramUsername: { contains: search, mode: 'insensitive' } },
                 { phone: { contains: search, mode: 'insensitive' } },
+                { city: { contains: search, mode: 'insensitive' } },
               ],
             }
           : {}),
@@ -29,7 +30,7 @@ export class ClientsService {
           select: { orders: true },
         },
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { name: 'asc' },
     });
   }
 
@@ -82,6 +83,7 @@ export class ClientsService {
         telegramUsername: dto.telegramUsername,
         instagramUsername: dto.instagramUsername,
         phone: dto.phone,
+        city: dto.city,
         source: dto.source,
         notes: dto.notes,
       },

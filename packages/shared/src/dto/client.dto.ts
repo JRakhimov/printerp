@@ -6,6 +6,7 @@ export const CreateClientSchema = z.object({
   telegramUsername: z.string().optional().nullable(),
   instagramUsername: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
+  city: z.string().optional().nullable(),
   source: z.nativeEnum(ClientSource).optional().default(ClientSource.OTHER),
   notes: z.string().optional().nullable(),
 });

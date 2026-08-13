@@ -33,7 +33,10 @@ export class FilamentsService {
             }
           : {}),
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: [
+        { brand: 'asc' },
+        { name: 'asc' },
+      ],
     });
   }
 

@@ -85,23 +85,32 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({ isOpen, on
               <label className="block text-xs font-semibold text-slate-300 mb-1">Phone</label>
               <input
                 {...register('phone')}
-                placeholder="+7 (999) 000-0000"
+                placeholder="+998 90 123-45-67"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Client Source</label>
-              <select
-                {...register('source')}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
-              >
-                <option value={ClientSource.TELEGRAM}>Telegram</option>
-                <option value={ClientSource.INSTAGRAM}>Instagram</option>
-                <option value={ClientSource.FRIEND}>Friend / Referral</option>
-                <option value={ClientSource.REPEAT_CLIENT}>Repeat Client</option>
-                <option value={ClientSource.OTHER}>Other</option>
-              </select>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">City / Город</label>
+              <input
+                {...register('city')}
+                placeholder="e.g. Tashkent"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+              />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Client Source</label>
+            <select
+              {...register('source')}
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
+            >
+              <option value={ClientSource.TELEGRAM}>Telegram</option>
+              <option value={ClientSource.INSTAGRAM}>Instagram</option>
+              <option value={ClientSource.FRIEND}>Friend / Referral</option>
+              <option value={ClientSource.REPEAT_CLIENT}>Repeat Client</option>
+              <option value={ClientSource.OTHER}>Other</option>
+            </select>
           </div>
 
           <div>

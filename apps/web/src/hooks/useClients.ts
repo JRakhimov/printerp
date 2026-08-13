@@ -34,6 +34,7 @@ export interface Client {
   telegramUsername: string | null;
   instagramUsername: string | null;
   phone: string | null;
+  city: string | null;
   source: ClientSource;
   notes: string | null;
   createdAt: string;
