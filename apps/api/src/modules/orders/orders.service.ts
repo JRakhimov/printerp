@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import { CreateOrderDto, UpdateOrderDto, ChangeOrderStatusDto } from '@printerp/shared';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 @Injectable()
 export class OrdersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramBotService: TelegramBotService,
+  ) {}
 
   async create(userId: string, dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
@@ -67,7 +71,7 @@ export class OrdersService {
       paymentStatus = PaymentStatus.PARTIALLY_PAID;
     }
 
-    return this.prisma.order.create({
+    const createdOrder = await this.prisma.order.create({
       data: {
         clientId: dto.clientId,
         createdById: userId,
@@ -116,6 +120,11 @@ export class OrdersService {
         },
       },
     });
+
+    // Notify all other team members via Telegram Bot
+    this.telegramBotService.notifyNewOrder(createdOrder, userId);
+
+    return createdOrder;
   }
 
   async findAll(filters?: { status?: OrderStatus; search?: string }) {

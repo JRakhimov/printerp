@@ -10,6 +10,7 @@ import { ProjectsModule } from './modules/projects/projects.module';
 import { OrdersModule } from './modules/orders/orders.module';
 import { FinanceModule } from './modules/finance/finance.module';
 import { SettingsModule } from './modules/settings/settings.module';
+import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { SettingsModule } from './modules/settings/settings.module';
     OrdersModule,
     FinanceModule,
     SettingsModule,
+    TelegramBotModule,
   ],
 })
 export class AppModule {}
