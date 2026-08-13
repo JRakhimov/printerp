@@ -38,7 +38,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       const telegramInitData = window.Telegram?.WebApp?.initData || '';
 
-      // Development fallback if running outside Telegram
+      // In production mode, if opened in a regular browser outside Telegram Mini App
+      if (!telegramInitData && import.meta.env.PROD) {
+        setIsAccessDenied(true);
+        setErrorMessage('Пожалуйста, откройте приложение внутри Telegram Mini App.');
+        setIsLoading(false);
+        return;
+      }
+
+      // Development fallback if running outside Telegram in dev mode
       const initDataPayload = telegramInitData || 'dev_user_123456789';
 
       // 2. Request backend authentication
