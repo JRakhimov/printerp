@@ -1,4 +1,4 @@
-version: '3.8'
+version: "3.8"
 
 services:
   postgres:
@@ -14,7 +14,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-printerp} -d ${POSTGRES_DB:-printerp_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-printerp} -d ${POSTGRES_DB:-printerp_db}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -27,16 +31,16 @@ services:
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-printerp}:${POSTGRES_PASSWORD:-printerp_secret}@postgres:5432/${POSTGRES_DB:-printerp_db}?schema=public}
-      PORT: 3000
+      PORT: 3011
       NODE_ENV: ${NODE_ENV:-development}
       DEV_BYPASS_AUTH: ${DEV_BYPASS_AUTH:-true}
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-123456789:ABCdefGHIjklMNOpqrsTUVwxyZ}
       INITIAL_OWNER_TELEGRAM_ID: ${INITIAL_OWNER_TELEGRAM_ID:-123456789}
       JWT_SECRET: ${JWT_SECRET:-super-secret-jwt-key-change-in-production-3d-print-erp}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-7d}
-      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://localhost:3000,http://127.0.0.1:5173}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:3012,http://localhost:3011,http://127.0.0.1:3012}
     ports:
-      - "3000:3000"
+      - "3011:3011"
     depends_on:
       postgres:
         condition: service_healthy
@@ -48,7 +52,7 @@ services:
     container_name: printerp_web
     restart: unless-stopped
     ports:
-      - "5173:80"
+      - "3012:80"
     depends_on:
       - api
 
