@@ -17,6 +17,8 @@ import {
   MapPin,
 } from 'lucide-react';
 
+import { ClientSource } from '@printerp/shared';
+
 interface ClientDetailModalProps {
   clientId: string | null;
   onClose: () => void;
@@ -45,13 +47,24 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 }) => {
   const { data: client, isLoading } = useClient(clientId);
   const updateClient = useUpdateClient();
-  const [notes, setNotes] = useState('');
+
+  const [name, setName] = useState('');
+  const [telegramUsername, setTelegramUsername] = useState('');
+  const [instagramUsername, setInstagramUsername] = useState('');
+  const [phone, setPhone] = useState('');
   const [city, setCity] = useState('');
+  const [source, setSource] = useState<ClientSource>(ClientSource.INSTAGRAM);
+  const [notes, setNotes] = useState('');
 
   useEffect(() => {
     if (client) {
-      setNotes(client.notes || '');
+      setName(client.name || '');
+      setTelegramUsername(client.telegramUsername || '');
+      setInstagramUsername(client.instagramUsername || '');
+      setPhone(client.phone || '');
       setCity(client.city || '');
+      setSource(client.source || ClientSource.INSTAGRAM);
+      setNotes(client.notes || '');
     }
   }, [client]);
 
@@ -59,14 +72,27 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
   const handleSaveDetails = async () => {
     if (!client) return;
+    if (!name.trim()) {
+      alert('Client name cannot be empty');
+      return;
+    }
     try {
       await updateClient.mutateAsync({
         id: client.id,
-        dto: { notes, city },
+        dto: {
+          name: name.trim(),
+          telegramUsername: telegramUsername.trim() || null,
+          instagramUsername: instagramUsername.trim() || null,
+          phone: phone.trim() || null,
+          city: city.trim() || null,
+          source,
+          notes: notes.trim() || null,
+        },
       });
       alert('Client details updated successfully!');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to update client details:', err);
+      alert(err.response?.data?.message || 'Failed to update client details');
     }
   };
 
@@ -120,7 +146,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               </button>
             </div>
 
-            {/* Contacts bar */}
+            {/* Quick Contacts Links Bar */}
             <div className="flex flex-wrap gap-2 text-xs">
               {client.telegramUsername && (
                 <a
@@ -188,49 +214,116 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Editable City & Notes Section */}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-amber-400" />
-                  City / Город
-                </label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g. Tashkent"
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
-                />
+            {/* Editable Profile Fields */}
+            <div className="space-y-3 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
+              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-blue-400" />
+                Edit Client Information
+              </h4>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Full Name *</label>
+                  <input
+                    type="text"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. John Snow"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">City / Город</label>
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="e.g. Tashkent"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
               </div>
 
-              <div className="space-y-1.5">
-                <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                  <MessageSquare className="w-3.5 h-3.5 text-indigo-400" />
-                  Customer Notes & Preferences
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Telegram</label>
+                  <input
+                    type="text"
+                    value={telegramUsername}
+                    onChange={(e) => setTelegramUsername(e.target.value)}
+                    placeholder="@username"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Instagram</label>
+                  <input
+                    type="text"
+                    value={instagramUsername}
+                    onChange={(e) => setInstagramUsername(e.target.value)}
+                    placeholder="@insta_handle"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Phone</label>
+                  <input
+                    type="text"
+                    value={phone}
+                    onChange={(e) => setPhone(e.target.value)}
+                    placeholder="+998 90 123-45-67"
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Client Source</label>
+                  <select
+                    value={source}
+                    onChange={(e) => setSource(e.target.value as ClientSource)}
+                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                  >
+                    <option value={ClientSource.INSTAGRAM}>Instagram</option>
+                    <option value={ClientSource.TELEGRAM}>Telegram</option>
+                    <option value={ClientSource.FRIEND}>Friend / Referral</option>
+                    <option value={ClientSource.REPEAT_CLIENT}>Repeat Client</option>
+                    <option value={ClientSource.OTHER}>Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <label className="block text-[11px] font-semibold text-slate-300 flex items-center gap-1">
+                  <MessageSquare className="w-3 h-3 text-indigo-400" />
+                  Notes & Preferences
                 </label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
                   placeholder="Preferred delivery location, discount rules..."
-                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                 />
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end pt-1">
                 <button
                   type="button"
                   onClick={handleSaveDetails}
                   disabled={updateClient.isPending}
-                  className="px-3.5 py-1.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition shadow-md shadow-indigo-500/20"
+                  className="px-4 py-1.5 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition shadow-md shadow-blue-500/20"
                 >
                   {updateClient.isPending ? (
                     <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   ) : (
                     <Save className="w-3.5 h-3.5" />
                   )}
-                  <span>Save Details</span>
+                  <span>Save Client Info</span>
                 </button>
               </div>
             </div>

@@ -21,7 +21,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({ isOpen, on
   } = useForm<CreateClientDto>({
     resolver: zodResolver(CreateClientSchema),
     defaultValues: {
-      source: ClientSource.TELEGRAM,
+      source: ClientSource.INSTAGRAM,
+      city: 'Ташкент',
     },
   });
 
@@ -105,8 +106,8 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({ isOpen, on
               {...register('source')}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
             >
-              <option value={ClientSource.TELEGRAM}>Telegram</option>
               <option value={ClientSource.INSTAGRAM}>Instagram</option>
+              <option value={ClientSource.TELEGRAM}>Telegram</option>
               <option value={ClientSource.FRIEND}>Friend / Referral</option>
               <option value={ClientSource.REPEAT_CLIENT}>Repeat Client</option>
               <option value={ClientSource.OTHER}>Other</option>

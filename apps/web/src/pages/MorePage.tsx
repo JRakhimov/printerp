@@ -132,6 +132,12 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                   )}
                 </div>
                 <div className="flex items-center space-x-3 text-xs text-slate-400">
+                  {client.city && (
+                    <span className="flex items-center gap-1 text-amber-400 font-medium">
+                      <MapPin className="w-3 h-3 text-amber-400" />
+                      {client.city}
+                    </span>
+                  )}
                   {client.telegramUsername && (
                     <span className="flex items-center gap-1">
                       <Send className="w-3 h-3 text-sky-400" />
@@ -148,12 +154,6 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                     <span className="flex items-center gap-1">
                       <Phone className="w-3 h-3 text-slate-400" />
                       {client.phone}
-                    </span>
-                  )}
-                  {client.city && (
-                    <span className="flex items-center gap-1 text-amber-400 font-medium">
-                      <MapPin className="w-3 h-3 text-amber-400" />
-                      {client.city}
                     </span>
                   )}
                 </div>

@@ -7,7 +7,7 @@ export const CreateClientSchema = z.object({
   instagramUsername: z.string().optional().nullable(),
   phone: z.string().optional().nullable(),
   city: z.string().optional().nullable(),
-  source: z.nativeEnum(ClientSource).optional().default(ClientSource.OTHER),
+  source: z.nativeEnum(ClientSource).optional().default(ClientSource.INSTAGRAM),
   notes: z.string().optional().nullable(),
 });
 
