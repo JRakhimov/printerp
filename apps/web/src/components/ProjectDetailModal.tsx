@@ -40,7 +40,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const { data: filaments } = useFilaments();
 
   const [isEditing, setIsEditing] = useState<boolean>(initialMode === 'edit');
-  const [selectedFilaments, setSelectedFilaments] = useState<{ filamentId: string; grams: number }[]>([]);
+  const [selectedFilaments, setSelectedFilaments] = useState<{ filamentId: string; grams: number | '' }[]>([]);
 
   const {
     register,
@@ -100,7 +100,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const updateFilamentRow = (index: number, field: 'filamentId' | 'grams', value: string | number) => {
     const updated = [...selectedFilaments];
     if (field === 'filamentId') updated[index].filamentId = value as string;
-    if (field === 'grams') updated[index].grams = Number(value) || 0;
+    if (field === 'grams') {
+      updated[index].grams = value === '' ? '' : isNaN(Number(value)) ? '' : Number(value);
+    }
     setSelectedFilaments(updated);
   };
 
@@ -112,9 +114,10 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   for (const item of selectedFilaments) {
     const fil = filamentMap.get(item.filamentId);
     if (fil) {
-      estimatedWeight += item.grams;
+      const rowGrams = Number(item.grams) || 0;
+      estimatedWeight += rowGrams;
       const costPerGram = Number(fil.costPerGram) || 0;
-      estimatedMaterialCost += item.grams * costPerGram;
+      estimatedMaterialCost += rowGrams * costPerGram;
     }
   }
 
@@ -130,7 +133,10 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
           modelUrl: data.modelUrl || null,
           imageUrl: data.imageUrl || null,
           notes: data.notes || null,
-          filaments: selectedFilaments,
+          filaments: selectedFilaments.map((f) => ({
+            filamentId: f.filamentId,
+            grams: Number(f.grams) || 0,
+          })),
         },
       });
       setIsEditing(false);
