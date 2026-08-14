@@ -22,6 +22,7 @@ export const UpdateOrderSchema = z.object({
   clientId: z.string().uuid().optional(),
   deadline: z.string().datetime().optional().nullable(),
   comment: z.string().optional().nullable(),
+  items: z.array(OrderItemInputSchema).min(1, 'At least one model item is required').optional(),
   finalPrice: z.number().min(0).optional(),
 });
 

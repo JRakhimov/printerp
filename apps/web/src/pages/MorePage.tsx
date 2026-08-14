@@ -117,12 +117,12 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
             <div
               key={client.id}
               onClick={() => setSelectedClientId(client.id)}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="space-y-1 flex-1">
                   <div className="flex items-center space-x-2">
-                    <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition">{client.name}</h3>
+                    <h3 className="text-sm font-bold text-white">{client.name}</h3>
                     <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
                       {client.source}
                     </span>
@@ -245,7 +245,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
             <div
               key={fil.id}
               onClick={() => setSelectedFilament(fil)}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-2.5">
@@ -254,7 +254,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                     style={{ backgroundColor: fil.color || '#3b82f6' }}
                   />
                   <div>
-                    <h3 className="text-sm font-bold text-white group-hover:text-indigo-400 transition">
+                    <h3 className="text-sm font-bold text-white">
                       {fil.brand} {fil.name}
                     </h3>
                     <p className="text-xs text-slate-400">{fil.material} • {fil.spoolWeightG}g spool</p>

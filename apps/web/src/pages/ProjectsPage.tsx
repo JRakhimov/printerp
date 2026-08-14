@@ -81,7 +81,7 @@ export const ProjectsPage: React.FC = () => {
           <div
             key={project.id}
             onClick={() => handleOpenDetail(project.id, 'view')}
-            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-indigo-500/50 transition cursor-pointer group"
+            className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm cursor-pointer"
           >
             <div className="flex items-start justify-between gap-3">
               {project.imageUrl && (
@@ -96,7 +96,7 @@ export const ProjectsPage: React.FC = () => {
               )}
               <div className="flex-1">
                 <div className="flex items-center gap-1.5">
-                  <h3 className="text-sm font-bold text-white group-hover:text-indigo-400 transition">{project.name}</h3>
+                  <h3 className="text-sm font-bold text-white">{project.name}</h3>
                   {project.modelUrl && (
                     <ExternalLink className="w-3 h-3 text-indigo-400 shrink-0" />
                   )}

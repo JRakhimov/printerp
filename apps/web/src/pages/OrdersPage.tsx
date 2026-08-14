@@ -133,13 +133,18 @@ export const OrdersPage: React.FC = () => {
             <div
               key={order.id}
               onClick={() => handleOpenDetail(order.id, 'view')}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm cursor-pointer"
             >
               <div className="flex items-start justify-between">
                 <div>
-                  <div className="flex items-center space-x-2">
+                  <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="text-xs font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
-                    <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition">{order.client?.name}</h3>
+                    <h3 className="text-sm font-bold text-white">{order.client?.name}</h3>
+                    {order.client?.city && (
+                      <span className="text-[10px] font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20">
+                        {order.client.city}
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {order.items?.map((i) => `${i.projectNameSnapshot} (${i.quantity}x)`).join(', ')}

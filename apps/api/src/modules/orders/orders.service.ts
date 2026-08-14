@@ -231,7 +231,52 @@ export class OrdersService {
   }
 
   async update(id: string, userId: string, dto: UpdateOrderDto) {
-    await this.findOne(id);
+    const existingOrder = await this.findOne(id);
+
+    let calculatedCost: number | undefined;
+    let calculatedPrice: number | undefined;
+    let itemsData: any[] | undefined;
+
+    if (dto.items && dto.items.length > 0) {
+      const projectIds = dto.items.map((i) => i.projectId);
+      const projects = await this.prisma.project.findMany({
+        where: { id: { in: projectIds }, deletedAt: null },
+      });
+      const projectMap = new Map(projects.map((p) => [p.id, p]));
+
+      calculatedCost = 0;
+      calculatedPrice = 0;
+
+      itemsData = dto.items.map((item) => {
+        const project = projectMap.get(item.projectId);
+        if (!project) {
+          throw new NotFoundException(`Project with ID "${item.projectId}" not found`);
+        }
+
+        const unitCost = item.unitCost !== undefined ? item.unitCost : project.defaultCost;
+        const unitPrice = item.unitPrice !== undefined ? item.unitPrice : project.defaultPrice;
+        const totalCost = unitCost * item.quantity;
+        const totalPrice = unitPrice * item.quantity;
+
+        calculatedCost! += totalCost;
+        calculatedPrice! += totalPrice;
+
+        return {
+          projectId: project.id,
+          projectNameSnapshot: project.name,
+          quantity: item.quantity,
+          unitCost,
+          unitPrice,
+          totalCost,
+          totalPrice,
+        };
+      });
+
+      // Delete existing order items before recreating new items
+      await this.prisma.orderItem.deleteMany({
+        where: { orderId: id },
+      });
+    }
 
     return this.prisma.order.update({
       where: { id },
@@ -239,12 +284,25 @@ export class OrdersService {
         clientId: dto.clientId,
         deadline: dto.deadline ? new Date(dto.deadline) : dto.deadline === null ? null : undefined,
         comment: dto.comment,
-        finalPrice: dto.finalPrice,
+        calculatedCost: calculatedCost !== undefined ? calculatedCost : undefined,
+        calculatedPrice: calculatedPrice !== undefined ? calculatedPrice : undefined,
+        finalPrice: dto.finalPrice !== undefined ? dto.finalPrice : calculatedPrice !== undefined ? calculatedPrice : undefined,
         updatedById: userId,
+        items: itemsData ? {
+          create: itemsData,
+        } : undefined,
       },
       include: {
         client: true,
-        items: true,
+        items: {
+          include: {
+            project: true,
+          },
+        },
+        payments: true,
+        events: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
   }

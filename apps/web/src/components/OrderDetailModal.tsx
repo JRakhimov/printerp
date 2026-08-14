@@ -8,6 +8,7 @@ import {
   PaymentStatus,
 } from '../hooks/useOrders';
 import { useClients } from '../hooks/useClients';
+import { useProjects } from '../hooks/useProjects';
 import {
   X,
   Calendar,
@@ -24,6 +25,8 @@ import {
   Save,
   MessageSquare,
   ShoppingBag,
+  Plus,
+  Box,
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -39,6 +42,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 }) => {
   const { data: order, isLoading } = useOrder(orderId);
   const { data: clients } = useClients();
+  const { data: projects } = useProjects();
+
   const updateOrder = useUpdateOrder();
   const updateStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
@@ -52,6 +57,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [editDeadline, setEditDeadline] = useState('');
   const [editComment, setEditComment] = useState('');
   const [editStatus, setEditStatus] = useState<OrderStatus>(OrderStatus.CREATED);
+  const [editItems, setEditItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
 
   useEffect(() => {
     setIsEditing(initialMode === 'edit');
@@ -64,10 +70,57 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setEditDeadline(order.deadline ? new Date(order.deadline).toISOString().split('T')[0] : '');
       setEditComment(order.comment || '');
       setEditStatus(order.status || OrderStatus.CREATED);
+      setEditItems(
+        order.items?.map((it) => ({
+          projectId: it.projectId || '',
+          quantity: it.quantity,
+        })) || []
+      );
     }
   }, [order]);
 
   if (!orderId) return null;
+
+  const handleAddItem = () => {
+    if (!projects || projects.length === 0) return;
+    setEditItems((prev) => [...prev, { projectId: projects[0].id, quantity: 1 }]);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    if (editItems.length <= 1) {
+      alert('Order must contain at least one model item');
+      return;
+    }
+    setEditItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleItemChange = (index: number, field: 'projectId' | 'quantity', value: any) => {
+    setEditItems((prev) =>
+      prev.map((item, i) => {
+        if (i === index) {
+          if (field === 'quantity') {
+            return { ...item, quantity: value === '' ? '' : Math.max(1, Number(value) || 1) };
+          }
+          return { ...item, [field]: value };
+        }
+        return item;
+      })
+    );
+  };
+
+  // Live calculation for edit mode
+  let editCalculatedCost = 0;
+  let editCalculatedPrice = 0;
+  if (projects && projects.length > 0) {
+    editItems.forEach((it) => {
+      const proj = projects.find((p) => p.id === it.projectId);
+      const qty = typeof it.quantity === 'number' ? it.quantity : 1;
+      if (proj) {
+        editCalculatedCost += (proj.defaultCost || 0) * qty;
+        editCalculatedPrice += (proj.defaultPrice || 0) * qty;
+      }
+    });
+  }
 
   const handleStatusChange = async (newStatus: OrderStatus) => {
     try {
@@ -88,12 +141,23 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     e.preventDefault();
     if (!order) return;
 
+    if (editItems.length === 0) {
+      alert('Please add at least one model item to the order');
+      return;
+    }
+
     try {
-      // 1. Update basic details
+      const formattedItems = editItems.map((it) => ({
+        projectId: it.projectId,
+        quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+      }));
+
+      // 1. Update basic details and items
       await updateOrder.mutateAsync({
         id: order.id,
         dto: {
           clientId: editClientId,
+          items: formattedItems,
           finalPrice: editFinalPrice !== '' ? Number(editFinalPrice) : undefined,
           deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
           comment: editComment || null,
@@ -335,7 +399,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
             {/* MODE 2: EDITABLE FORM MODE */}
             {isEditing && (
-              <form onSubmit={handleSaveOrder} className="space-y-3">
+              <form onSubmit={handleSaveOrder} className="space-y-4">
                 {/* Client Select */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Client *</label>
@@ -354,6 +418,74 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       );
                     })}
                   </select>
+                </div>
+
+                {/* Models / Order Items Editor */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                      <Box className="w-3.5 h-3.5 text-indigo-400" />
+                      Order Models & Items ({editItems.length})
+                    </label>
+                    <button
+                      type="button"
+                      onClick={handleAddItem}
+                      className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Add Model</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {editItems.map((item, idx) => {
+                      const selectedProj = projects?.find((p) => p.id === item.projectId);
+                      const unitCost = selectedProj?.defaultCost || 0;
+                      const unitPrice = selectedProj?.defaultPrice || 0;
+                      const qty = typeof item.quantity === 'number' ? item.quantity : 1;
+                      const lineTotal = unitPrice * qty;
+
+                      return (
+                        <div
+                          key={idx}
+                          className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2"
+                        >
+                          <select
+                            value={item.projectId}
+                            onChange={(e) => handleItemChange(idx, 'projectId', e.target.value)}
+                            className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none truncate"
+                            required
+                          >
+                            {(projects || []).map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name} ({p.defaultPrice.toLocaleString('ru-RU')} сум)
+                              </option>
+                            ))}
+                          </select>
+
+                          <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
+                            <span className="text-[11px] text-slate-400 mr-1.5 shrink-0">Qty:</span>
+                            <input
+                              type="number"
+                              min="1"
+                              value={item.quantity}
+                              onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
+                              className="w-full bg-transparent text-xs font-bold text-white focus:outline-none text-right"
+                            />
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveItem(idx)}
+                            className="text-slate-500 hover:text-rose-400 p-1 shrink-0"
+                            title="Remove item"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
                 {/* Order Status Select */}
@@ -375,11 +507,17 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 {/* Price & Deadline Fields */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Final Agreed Price (сум)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                      <span>Agreed Price (сум)</span>
+                      <span className="text-[10px] text-slate-500 font-normal">
+                        Cat: {editCalculatedPrice.toLocaleString('ru-RU')}
+                      </span>
+                    </label>
                     <input
                       type="number"
                       value={editFinalPrice}
                       onChange={(e) => setEditFinalPrice(e.target.value)}
+                      placeholder={editCalculatedPrice.toString()}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-bold focus:border-emerald-500 focus:outline-none"
                     />
                   </div>
@@ -402,7 +540,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <div>
                   <label className="block text-xs font-semibold text-slate-300 mb-1">Comment / Special Request</label>
                   <textarea
-                    rows={3}
+                    rows={2}
                     value={editComment}
                     onChange={(e) => setEditComment(e.target.value)}
                     placeholder="Infill percentage, color preference, notes..."
