@@ -32,14 +32,14 @@ export const PrintersPage: React.FC = () => {
   const [testMessages, setTestMessages] = useState<Record<string, { success: boolean; message: string }>>({});
 
   const handleDelete = async (id: string, name: string) => {
-    if (confirm(`Are you sure you want to remove "${name}" from your printer fleet?`)) {
+    if (confirm(`Вы действительно хотите удалить принтер "${name}" из списка?`)) {
       await deletePrinter.mutateAsync(id);
     }
   };
 
   const handleTestSingleLink = async (printer: PrinterResponse) => {
     if (!printer.ipAddress || !printer.accessCode) {
-      alert('Please configure IP Address and LAN Access Code for this printer first.');
+      alert('Пожалуйста, сначала настройте IP-адрес и код доступа LAN Access Code для этого принтера.');
       return;
     }
 
@@ -60,7 +60,7 @@ export const PrintersPage: React.FC = () => {
         ...prev,
         [printer.id]: {
           success: false,
-          message: err.response?.data?.message || 'Connection failed',
+          message: err.response?.data?.message || 'Ошибка подключения',
         },
       }));
     } finally {
@@ -79,16 +79,16 @@ export const PrintersPage: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <PrinterIcon className="w-5 h-5 text-emerald-400" />
-            Bambu Lab Printer Fleet
+            3D-Принтеры Bambu Lab
           </h2>
-          <p className="text-xs text-slate-400">Live local MQTT telemetry & print monitoring</p>
+          <p className="text-xs text-slate-400">Телеметрия по локальному MQTT и мониторинг печати</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => refetch()}
             disabled={isRefetching}
             className="p-2 text-slate-400 hover:text-white bg-slate-900 border border-slate-800 rounded-xl transition"
-            title="Refresh Telemetry"
+            title="Обновить телеметрию"
           >
             <RefreshCw className={`w-4 h-4 ${isRefetching ? 'animate-spin text-emerald-400' : ''}`} />
           </button>
@@ -97,7 +97,7 @@ export const PrintersPage: React.FC = () => {
             className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition shadow-md shadow-emerald-500/20"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Bambu</span>
+            <span>Добавить принтер</span>
           </button>
         </div>
       </div>
@@ -105,18 +105,18 @@ export const PrintersPage: React.FC = () => {
       {/* Fleet Metric Badges */}
       <div className="grid grid-cols-3 gap-3">
         <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 flex flex-col items-center text-center">
-          <span className="text-[11px] text-slate-400 font-medium">Total Fleet</span>
+          <span className="text-[11px] text-slate-400 font-medium">Всего принтеров</span>
           <span className="text-lg font-black text-white">{totalPrinters}</span>
         </div>
         <div className="bg-emerald-950/40 border border-emerald-800/40 rounded-xl p-3 flex flex-col items-center text-center">
           <span className="text-[11px] text-emerald-400 font-medium flex items-center gap-1">
             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Printing
+            В печати
           </span>
           <span className="text-lg font-black text-emerald-300">{printingCount}</span>
         </div>
         <div className="bg-sky-950/40 border border-sky-800/40 rounded-xl p-3 flex flex-col items-center text-center">
-          <span className="text-[11px] text-sky-400 font-medium">Idle / Standby</span>
+          <span className="text-[11px] text-sky-400 font-medium">В ожидании</span>
           <span className="text-lg font-black text-sky-300">{idleCount}</span>
         </div>
       </div>
@@ -132,9 +132,9 @@ export const PrintersPage: React.FC = () => {
             <PrinterIcon className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">No Bambu Lab printers connected</h3>
+            <h3 className="text-sm font-bold text-white">Принтеры Bambu Lab не подключены</h3>
             <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
-              Add your Bambu Lab P1S, X1C, or A1 printer using its local IP Address and LAN Access Code.
+              Добавьте ваш Bambu Lab (P1S, X1C, A1 и др.) с помощью его локального IP-адреса и кода доступа LAN Access Code.
             </p>
           </div>
           <button
@@ -142,7 +142,7 @@ export const PrintersPage: React.FC = () => {
             className="inline-flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-4 py-2 rounded-xl transition shadow-md shadow-emerald-500/20"
           >
             <Plus className="w-4 h-4" />
-            <span>Connect First Printer</span>
+            <span>Подключить первый принтер</span>
           </button>
         </div>
       ) : (
@@ -157,7 +157,17 @@ export const PrintersPage: React.FC = () => {
             const remainingMins = printer.remainingMinutes ?? 0;
             const hours = Math.floor(remainingMins / 60);
             const mins = remainingMins % 60;
-            const timeString = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+            const timeString = hours > 0 ? `${hours}ч ${mins}м` : `${mins}м`;
+
+            const statusText = isPrinting
+              ? 'ПЕЧАТЬ'
+              : isPaused
+              ? 'ПАУЗА'
+              : isFinished
+              ? 'ЗАВЕРШЕНО'
+              : printer.lastStatus === 'OFFLINE'
+              ? 'ОФФЛАЙН'
+              : printer.lastStatus || 'ГОТОВ';
 
             const testMsg = testMessages[printer.id];
 
@@ -177,7 +187,7 @@ export const PrintersPage: React.FC = () => {
                     </div>
                     <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
                       <Wifi className="w-3 h-3 text-sky-400" />
-                      {printer.ipAddress ? `${printer.ipAddress}:8883` : 'No IP configured'}
+                      {printer.ipAddress ? `${printer.ipAddress}:8883` : 'IP не указан'}
                       {printer.serialNumber && ` • SN: ${printer.serialNumber}`}
                     </p>
                   </div>
@@ -206,7 +216,7 @@ export const PrintersPage: React.FC = () => {
                             : 'bg-slate-400'
                         }`}
                       />
-                      {printer.lastStatus || 'IDLE'}
+                      {statusText}
                     </span>
                   </div>
                 </div>
@@ -217,7 +227,7 @@ export const PrintersPage: React.FC = () => {
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-slate-300 font-medium flex items-center gap-1.5 truncate max-w-[200px]">
                         <FileCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate">{printer.currentFile || 'Active Print Job'}</span>
+                        <span className="truncate">{printer.currentFile || 'Печать задания'}</span>
                       </span>
                       <span className="font-bold text-emerald-400">{progress}%</span>
                     </div>
@@ -239,7 +249,7 @@ export const PrintersPage: React.FC = () => {
                       <Flame className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Nozzle</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Сопло</p>
                       <p className="font-bold text-white">
                         {printer.nozzleTemp !== null && printer.nozzleTemp !== undefined
                           ? `${Math.round(printer.nozzleTemp)}°C`
@@ -254,7 +264,7 @@ export const PrintersPage: React.FC = () => {
                       <Zap className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Bed</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Стол</p>
                       <p className="font-bold text-white">
                         {printer.bedTemp !== null && printer.bedTemp !== undefined
                           ? `${Math.round(printer.bedTemp)}°C`
@@ -269,7 +279,7 @@ export const PrintersPage: React.FC = () => {
                       <Clock className="w-3.5 h-3.5" />
                     </div>
                     <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Remaining</p>
+                      <p className="text-[10px] text-slate-400 font-medium">Осталось</p>
                       <p className="font-bold text-white">
                         {isPrinting && remainingMins > 0 ? timeString : '—'}
                       </p>
@@ -302,21 +312,21 @@ export const PrintersPage: React.FC = () => {
                     ) : (
                       <Wifi className="w-3 h-3 text-sky-400" />
                     )}
-                    <span>Test Link</span>
+                    <span>Проверить связь</span>
                   </button>
 
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => setEditingPrinter(printer)}
                       className="p-1.5 text-slate-400 hover:text-white bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl transition"
-                      title="Edit Printer"
+                      title="Редактировать принтер"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDelete(printer.id, printer.name)}
                       className="p-1.5 text-slate-400 hover:text-rose-400 bg-slate-950 hover:bg-slate-800 border border-slate-800 rounded-xl transition"
-                      title="Delete Printer"
+                      title="Удалить принтер"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

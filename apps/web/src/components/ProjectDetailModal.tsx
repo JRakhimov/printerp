@@ -142,19 +142,19 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
       setIsEditing(false);
     } catch (err: any) {
       console.error('Failed to update project:', err);
-      alert(err.response?.data?.message || 'Failed to update project');
+      alert(err.response?.data?.message || 'Ошибка обновления модели');
     }
   };
 
   const handleDelete = async () => {
     if (!project) return;
-    if (window.confirm(`Are you sure you want to delete project "${project.name}"?`)) {
+    if (window.confirm(`Вы уверены, что хотите удалить 3D-модель "${project.name}"?`)) {
       try {
         await deleteProject.mutateAsync(project.id);
         onClose();
       } catch (err: any) {
         console.error('Failed to delete project:', err);
-        alert(err.response?.data?.message || 'Failed to delete project');
+        alert(err.response?.data?.message || 'Ошибка удаления модели');
       }
     }
   };
@@ -163,8 +163,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const marginPercentage = project && project.defaultPrice > 0 ? Math.round((profit / project.defaultPrice) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
         {isLoading || !project ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -175,7 +175,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
               <h3 className="text-sm font-bold text-white flex items-center gap-2">
                 <Box className="w-4 h-4 text-indigo-400" />
-                {isEditing ? 'Edit 3D Project Model' : project.name}
+                {isEditing ? 'Редактировать 3D-модель' : project.name}
               </h3>
               <div className="flex items-center space-x-2">
                 {!isEditing ? (
@@ -184,7 +184,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    <span>Edit Model</span>
+                    <span>Редактировать</span>
                   </button>
                 ) : (
                   <button
@@ -192,7 +192,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 transition"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>View Mode</span>
+                    <span>Просмотр</span>
                   </button>
                 )}
                 <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -219,7 +219,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 ) : (
                   <div className="w-full h-24 bg-slate-950 rounded-xl border border-slate-800 border-dashed flex items-center justify-center text-slate-600 gap-2 text-xs">
                     <ImageIcon className="w-4 h-4" />
-                    <span>No model image attached</span>
+                    <span>Изображение не прикреплено</span>
                   </div>
                 )}
 
@@ -240,7 +240,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                         className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Open 3D Model Link (Thingiverse / Printables)</span>
+                        <span>Открыть ссылку на 3D-модель (Printables / Thingiverse)</span>
                       </a>
                     </div>
                   )}
@@ -249,34 +249,34 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 {/* Dimensions & Technical Specifications */}
                 <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Print Time</span>
+                    <span className="text-[10px] text-slate-400 block">Время печати</span>
                     <span className="font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
                       <Clock className="w-3 h-3 text-slate-500" />
                       {project.printTimeMinutes
-                        ? `${Math.floor(project.printTimeMinutes / 60)}h ${project.printTimeMinutes % 60}m`
-                        : 'N/A'}
+                        ? `${Math.floor(project.printTimeMinutes / 60)}ч ${project.printTimeMinutes % 60}м`
+                        : '—'}
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Total Weight</span>
+                    <span className="text-[10px] text-slate-400 block">Общий вес</span>
                     <span className="font-semibold text-slate-200 flex items-center gap-1 mt-0.5">
                       <Layers className="w-3 h-3 text-blue-400" />
-                      {project.weightG}g
+                      {project.weightG} г
                     </span>
                   </div>
                   <div>
-                    <span className="text-[10px] text-slate-400 block">Dimensions</span>
+                    <span className="text-[10px] text-slate-400 block">Габариты</span>
                     <span className="font-semibold text-slate-200 block mt-0.5">
                       {project.sizeXMm && project.sizeYMm
-                        ? `${project.sizeXMm}×${project.sizeYMm}${project.sizeZMm ? `×${project.sizeZMm}` : ''} mm`
-                        : 'N/A'}
+                        ? `${project.sizeXMm}×${project.sizeYMm}${project.sizeZMm ? `×${project.sizeZMm}` : ''} мм`
+                        : '—'}
                     </span>
                   </div>
                 </div>
 
                 {/* Filament Consumption Breakdown */}
                 <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
-                  <span className="text-xs font-semibold text-slate-300">Filament Consumption</span>
+                  <span className="text-xs font-semibold text-slate-300">Расход филамента</span>
                   <div className="flex flex-wrap gap-1.5">
                     {project.projectFilaments?.map((pf) => (
                       <span
@@ -290,7 +290,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                         <span>
                           {pf.filament?.brand} {pf.filament?.name}
                         </span>
-                        <strong className="text-white ml-1">{pf.grams}g</strong>
+                        <strong className="text-white ml-1">{pf.grams} г</strong>
                       </span>
                     ))}
                   </div>
@@ -299,23 +299,23 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 {/* Financial Summary */}
                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 text-xs">
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Total Cost:</span>
+                    <span className="text-slate-400">Себестоимость:</span>
                     <span className="font-semibold text-slate-200">
                       {Number(project.defaultCost).toLocaleString('ru-RU')} сум
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-slate-400">Catalog Selling Price:</span>
+                    <span className="text-slate-400">Цена в каталоге:</span>
                     <span className="font-bold text-emerald-400">
                       {Number(project.defaultPrice).toLocaleString('ru-RU')} сум
                     </span>
                   </div>
                   <div className="pt-2 border-t border-slate-800 flex items-center justify-between">
-                    <span className="text-slate-400">Estimated Profit & Margin:</span>
+                    <span className="text-slate-400">Расчётная прибыль:</span>
                     <span className="font-bold text-emerald-400 flex items-center gap-1.5">
                       {profit.toLocaleString('ru-RU')} сум
                       <span className="text-[10px] bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded border border-emerald-500/20">
-                        {marginPercentage}% margin
+                        {marginPercentage}% маржа
                       </span>
                     </span>
                   </div>
@@ -326,7 +326,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   <div className="space-y-1 bg-slate-950/40 p-3 rounded-xl border border-slate-800/80 text-xs">
                     <span className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
                       <MessageSquare className="w-3 h-3 text-indigo-400" />
-                      Comments & Printing Notes
+                      Заметки и параметры печати
                     </span>
                     <p className="text-slate-200">{project.notes}</p>
                   </div>
@@ -338,21 +338,21 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
             {isEditing && (
               <form onSubmit={handleSubmit(onSubmitSave)} className="space-y-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Model Name *</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Название модели *</label>
                   <input
                     {...register('name')}
-                    placeholder="e.g. Articulated Dragon"
+                    placeholder="напр. Подвижный дракон"
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                   {errors.name && <p className="text-[11px] text-red-400 mt-1">{errors.name.message}</p>}
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Описание модели</label>
                   <textarea
                     {...register('description')}
                     rows={2}
-                    placeholder="Model description..."
+                    placeholder="Описание модели..."
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -362,7 +362,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                       <LinkIcon className="w-3.5 h-3.5 text-indigo-400" />
-                      3D Model Link (URL)
+                      Ссылка на модель (URL)
                     </label>
                     <input
                       {...register('modelUrl')}
@@ -374,7 +374,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                       <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                      Photo URL
+                      Ссылка на фото (URL)
                     </label>
                     <input
                       {...register('imageUrl')}
@@ -388,7 +388,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                      Filament Consumption
+                      Расход филамента
                     </label>
                     <button
                       type="button"
@@ -396,12 +396,12 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      Add Filament
+                      Добавить филамент
                     </button>
                   </div>
 
                   {selectedFilaments.length === 0 ? (
-                    <p className="text-[11px] text-slate-500 italic">No filaments added yet.</p>
+                    <p className="text-[11px] text-slate-500 italic">Филамент пока не добавлен.</p>
                   ) : (
                     <div className="space-y-2">
                       {selectedFilaments.map((row, idx) => (
@@ -423,17 +423,17 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                               type="number"
                               value={row.grams}
                               onChange={(e) => updateFilamentRow(idx, 'grams', e.target.value)}
-                              placeholder="Grams"
+                              placeholder="Граммы"
                               className="w-full min-w-0 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                             />
-                            <span className="text-[11px] font-semibold text-slate-400 ml-1 shrink-0">g</span>
+                            <span className="text-[11px] font-semibold text-slate-400 ml-1 shrink-0">г</span>
                           </div>
 
                           <button
                             type="button"
                             onClick={() => removeFilamentRow(idx)}
                             className="text-slate-500 hover:text-red-400 p-1 shrink-0"
-                            title="Remove Filament"
+                            title="Удалить филамент"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -444,17 +444,17 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
                   {/* Metric preview box */}
                   <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-                    <span className="text-slate-400">Total Weight: <strong className="text-white">{estimatedWeight}g</strong></span>
+                    <span className="text-slate-400">Общий вес: <strong className="text-white">{estimatedWeight} г</strong></span>
                     <span className="text-slate-400 flex items-center gap-1">
                       <Calculator className="w-3 h-3 text-indigo-400" />
-                      Est. Cost: <strong className="text-emerald-400">{estimatedTotalCost.toLocaleString('ru-RU')} сум</strong>
+                      Себестоимость: <strong className="text-emerald-400">{estimatedTotalCost.toLocaleString('ru-RU')} сум</strong>
                     </span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Client Selling Price (сум) *</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Цена продажи клиенту (сум) *</label>
                     <input
                       {...register('defaultPrice', { valueAsNumber: true })}
                       type="number"
@@ -465,7 +465,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Extra Hardware Cost (сум)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Доп. фурнитура / расходы (сум)</label>
                     <input
                       {...register('extraCost', { valueAsNumber: true })}
                       type="number"
@@ -477,7 +477,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
 
                 <div className="grid grid-cols-4 gap-2">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Print Time (m)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Время (мин)</label>
                     <input
                       {...register('printTimeMinutes', { valueAsNumber: true })}
                       type="number"
@@ -486,7 +486,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Size X (mm)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Размер X (мм)</label>
                     <input
                       {...register('sizeXMm', { valueAsNumber: true })}
                       type="number"
@@ -495,7 +495,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Size Y (mm)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Размер Y (мм)</label>
                     <input
                       {...register('sizeYMm', { valueAsNumber: true })}
                       type="number"
@@ -504,7 +504,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">Size Z (mm)</label>
+                    <label className="block text-xs font-semibold text-slate-300 mb-1">Размер Z (мм)</label>
                     <input
                       {...register('sizeZMm', { valueAsNumber: true })}
                       type="number"
@@ -515,11 +515,11 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Comments & Printing Notes</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Заметки и параметры печати</label>
                   <textarea
                     {...register('notes')}
                     rows={2}
-                    placeholder="Print settings, infill, nozzle temp..."
+                    placeholder="Параметры печати, заполнение, сопло..."
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
@@ -536,7 +536,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     ) : (
                       <Trash2 className="w-3.5 h-3.5" />
                     )}
-                    <span>Delete</span>
+                    <span>Удалить</span>
                   </button>
 
                   <div className="flex items-center space-x-2">
@@ -545,7 +545,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       onClick={() => setIsEditing(false)}
                       className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
                     >
-                      Cancel
+                      Отмена
                     </button>
                     <button
                       type="submit"
@@ -557,7 +557,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                       ) : (
                         <Save className="w-3.5 h-3.5" />
                       )}
-                      <span>Save Changes</span>
+                      <span>Сохранить</span>
                     </button>
                   </div>
                 </div>

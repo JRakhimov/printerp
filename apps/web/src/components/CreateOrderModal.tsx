@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useClients } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
 import { useCreateOrder } from '../hooks/useOrders';
-import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign } from 'lucide-react';
+import { getClientDisplayName } from '@printerp/shared';
+import { ClientSelect } from './ClientSelect';
+import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard } from 'lucide-react';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -20,11 +22,40 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const [items, setItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
   const [customFinalPrice, setCustomFinalPrice] = useState<string>('');
   const [initialPaymentAmount, setInitialPaymentAmount] = useState<string>('');
-  const [initialPaymentComment, setInitialPaymentComment] = useState<string>('Deposit paid');
-
-  if (!isOpen) return null;
+  const [isDepositManuallyEdited, setIsDepositManuallyEdited] = useState<boolean>(false);
+  const [initialPaymentComment, setInitialPaymentComment] = useState<string>('Full prepayment paid');
 
   const projectMap = new Map((projects || []).map((p) => [p.id, p]));
+
+  // Live financial metrics
+  let calculatedCost = 0;
+  let calculatedPrice = 0;
+
+  for (const item of items) {
+    const proj = projectMap.get(item.projectId);
+    if (proj) {
+      const qty = Number(item.quantity) || 1;
+      calculatedCost += proj.defaultCost * qty;
+      calculatedPrice += proj.defaultPrice * qty;
+    }
+  }
+
+  const finalPrice = customFinalPrice !== '' ? Number(customFinalPrice) || 0 : calculatedPrice;
+  const estimatedProfit = finalPrice - calculatedCost;
+  const marginPercentage = finalPrice > 0 ? Math.round((estimatedProfit / finalPrice) * 100) : 0;
+
+  // Auto-fill 100% price into deposit unless manually altered
+  useEffect(() => {
+    if (!isDepositManuallyEdited) {
+      if (finalPrice > 0) {
+        setInitialPaymentAmount(finalPrice.toString());
+      } else {
+        setInitialPaymentAmount('');
+      }
+    }
+  }, [finalPrice, isDepositManuallyEdited]);
+
+  if (!isOpen) return null;
 
   const addItemRow = () => {
     if (projects && projects.length > 0) {
@@ -45,23 +76,6 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
     setItems(updated);
   };
 
-  // Live financial metrics
-  let calculatedCost = 0;
-  let calculatedPrice = 0;
-
-  for (const item of items) {
-    const proj = projectMap.get(item.projectId);
-    if (proj) {
-      const qty = Number(item.quantity) || 1;
-      calculatedCost += proj.defaultCost * qty;
-      calculatedPrice += proj.defaultPrice * qty;
-    }
-  }
-
-  const finalPrice = customFinalPrice !== '' ? Number(customFinalPrice) || 0 : calculatedPrice;
-  const estimatedProfit = finalPrice - calculatedCost;
-  const marginPercentage = finalPrice > 0 ? Math.round((estimatedProfit / finalPrice) * 100) : 0;
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
@@ -74,6 +88,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
     }
 
     try {
+      const depositToSubmit = initialPaymentAmount !== ''
+        ? Number(initialPaymentAmount)
+        : (!isDepositManuallyEdited && finalPrice > 0 ? finalPrice : undefined);
+
       await createOrder.mutateAsync({
         clientId,
         deadline: deadline ? new Date(deadline).toISOString() : null,
@@ -83,7 +101,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
           quantity: Math.max(1, Number(i.quantity) || 1),
         })),
         finalPrice: customFinalPrice !== '' ? Number(customFinalPrice) : undefined,
-        initialPaymentAmount: initialPaymentAmount ? Number(initialPaymentAmount) : undefined,
+        initialPaymentAmount: depositToSubmit,
         initialPaymentComment: initialPaymentComment || undefined,
       });
 
@@ -94,6 +112,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
       setItems([]);
       setCustomFinalPrice('');
       setInitialPaymentAmount('');
+      setIsDepositManuallyEdited(false);
       onClose();
     } catch (err) {
       console.error('Failed to create order:', err);
@@ -101,12 +120,12 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <ShoppingBag className="w-4 h-4 text-emerald-400" />
-            Create New 3D Print Order
+            Создание нового заказа
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -114,32 +133,22 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Client Selection */}
+          {/* Client Selection (Searchable with suggestions) */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Client *</label>
-            <select
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Клиент *</label>
+            <ClientSelect
               value={clientId}
-              onChange={(e) => setClientId(e.target.value)}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+              onChange={setClientId}
+              placeholder="Поиск по @instagram, имени, городу или телефону..."
               required
-            >
-              <option value="">Select a client...</option>
-              {(clients || []).map((c) => {
-                const info = c.instagramUsername || c.telegramUsername || c.notes || c.city || c.phone || c.source;
-                return (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {info ? `(${info})` : ''}
-                  </option>
-                );
-              })}
-            </select>
+            />
           </div>
 
           {/* Items Section */}
           <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                Order Items (Models)
+                Состав заказа (Модели)
               </label>
               <button
                 type="button"
@@ -147,12 +156,12 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                 className="text-[11px] text-emerald-400 hover:text-emerald-300 font-medium flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add Item
+                Выбрать модели
               </button>
             </div>
 
             {items.length === 0 ? (
-              <p className="text-[11px] text-slate-500 italic">No models added to this order yet.</p>
+              <p className="text-[11px] text-slate-500 italic">Модели в заказ пока не добавлены.</p>
             ) : (
               <div className="space-y-2">
                 {items.map((row, idx) => {
@@ -172,7 +181,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                       </select>
 
                       <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
-                        <span className="text-[11px] text-slate-400 mr-1 shrink-0">Qty:</span>
+                        <span className="text-[11px] text-slate-400 mr-1 shrink-0">Кол-во:</span>
                         <input
                           type="number"
                           min="1"
@@ -186,7 +195,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                         type="button"
                         onClick={() => removeItemRow(idx)}
                         className="text-slate-500 hover:text-red-400 p-1 shrink-0"
-                        title="Remove item"
+                        title="Удалить модель"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -201,11 +210,11 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2">
             <div className="grid grid-cols-2 gap-2 text-xs">
               <div>
-                <span className="text-slate-400 text-[11px]">Est. Cost:</span>
+                <span className="text-slate-400 text-[11px]">Себестоимость:</span>
                 <p className="font-semibold text-slate-200">{calculatedCost.toLocaleString('ru-RU')} сум</p>
               </div>
               <div>
-                <span className="text-slate-400 text-[11px]">Catalog Price:</span>
+                <span className="text-slate-400 text-[11px]">По каталогу:</span>
                 <p className="font-semibold text-slate-200">{calculatedPrice.toLocaleString('ru-RU')} сум</p>
               </div>
             </div>
@@ -213,7 +222,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
             <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
-                  Final Agreed Price (сум)
+                  Итоговая цена заказа (сум)
                 </label>
                 <input
                   type="number"
@@ -225,11 +234,11 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
 
               <div>
-                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Estimated Profit & Margin</label>
+                <label className="block text-[11px] font-semibold text-slate-300 mb-1">Расчётная прибыль и маржа</label>
                 <div className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs flex items-center justify-between">
                   <span className="font-bold text-emerald-400">{estimatedProfit.toLocaleString('ru-RU')} сум</span>
                   <span className="text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 px-1.5 py-0.5 rounded">
-                    {marginPercentage}% margin
+                    {marginPercentage}% маржа
                   </span>
                 </div>
               </div>
@@ -241,7 +250,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                Target Deadline
+                Дедлайн сдачи
               </label>
               <input
                 type="date"
@@ -252,27 +261,86 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                Deposit Payment (сум)
-              </label>
-              <input
-                type="number"
-                placeholder="0"
-                value={initialPaymentAmount}
-                onChange={(e) => setInitialPaymentAmount(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
-              />
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-xs font-semibold text-slate-300 flex items-center gap-1">
+                  <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                  Депозит (Предоплата)
+                </label>
+                {finalPrice > 0 && (
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDepositManuallyEdited(false);
+                        setInitialPaymentAmount(finalPrice.toString());
+                      }}
+                      className={`text-[10px] px-1.5 py-0.5 rounded border transition ${
+                        !isDepositManuallyEdited || Number(initialPaymentAmount) === finalPrice
+                          ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40 font-bold'
+                          : 'bg-slate-800 text-slate-400 border-slate-700 hover:text-emerald-300'
+                      }`}
+                    >
+                      100%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDepositManuallyEdited(true);
+                        setInitialPaymentAmount(Math.round(finalPrice / 2).toString());
+                      }}
+                      className="text-[10px] text-amber-400 hover:text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20"
+                    >
+                      50%
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsDepositManuallyEdited(true);
+                        setInitialPaymentAmount('0');
+                      }}
+                      className="text-[10px] text-slate-400 hover:text-slate-300 bg-slate-800 px-1.5 py-0.5 rounded border border-slate-700"
+                    >
+                      0
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  type="number"
+                  placeholder={finalPrice > 0 ? finalPrice.toString() : '0'}
+                  value={initialPaymentAmount}
+                  onChange={(e) => {
+                    setIsDepositManuallyEdited(true);
+                    setInitialPaymentAmount(e.target.value);
+                  }}
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-bold placeholder-slate-500 focus:border-emerald-500 focus:outline-none pr-12"
+                />
+                <span className="absolute right-3 top-2 text-[10px] text-slate-500 font-semibold">сум</span>
+              </div>
+              {finalPrice > 0 && (
+                <div className="mt-1 text-[10px] flex items-center justify-between">
+                  {Number(initialPaymentAmount || 0) >= finalPrice ? (
+                    <span className="text-emerald-400 font-semibold">✓ 100% Предоплата</span>
+                  ) : Number(initialPaymentAmount || 0) > 0 ? (
+                    <span className="text-amber-400">
+                      Остаток: {(finalPrice - Number(initialPaymentAmount)).toLocaleString('ru-RU')} сум
+                    </span>
+                  ) : (
+                    <span className="text-rose-400 font-medium">Без предоплаты</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Comment / Special Request</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Комментарий / Пожелания к заказу</label>
             <textarea
               rows={2}
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder="Infill percentage, color preference, urgent tag..."
+              placeholder="Процент заполнения, цвет, требования к печати..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
             />
           </div>
@@ -283,7 +351,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               onClick={onClose}
               className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
             >
-              Cancel
+              Отмена
             </button>
             <button
               type="submit"
@@ -291,7 +359,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition shadow-md shadow-emerald-500/20"
             >
               {createOrder.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>Create Order</span>
+              <span>Создать заказ</span>
             </button>
           </div>
         </form>

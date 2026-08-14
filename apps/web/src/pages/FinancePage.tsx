@@ -27,16 +27,19 @@ import {
   Package,
   Receipt,
   AlertCircle,
+  Sparkles,
+  Calculator,
+  Coins,
 } from 'lucide-react';
 import { ExpenseCategory } from '@printerp/shared';
 
 const categoryLabels: Record<string, { label: string; icon: any; color: string }> = {
-  FILAMENT: { label: 'Filament', icon: Layers, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
-  ELECTRICITY: { label: 'Electricity', icon: Zap, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
-  PRINTER_PARTS: { label: 'Printer Parts', icon: Wrench, color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
-  TOOLS: { label: 'Tools', icon: Wrench, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
-  DELIVERY: { label: 'Delivery', icon: Package, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
-  OTHER: { label: 'Other', icon: Receipt, color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
+  FILAMENT: { label: 'Филамент', icon: Layers, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
+  ELECTRICITY: { label: 'Электричество', icon: Zap, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
+  PRINTER_PARTS: { label: 'Запчасти принтера', icon: Wrench, color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
+  TOOLS: { label: 'Инструменты', icon: Wrench, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  DELIVERY: { label: 'Доставка', icon: Package, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  OTHER: { label: 'Прочее', icon: Receipt, color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
 };
 
 export const FinancePage: React.FC = () => {
@@ -54,7 +57,7 @@ export const FinancePage: React.FC = () => {
   const deleteTx = useDeleteTransaction();
 
   const handleDeleteTx = async (id: string) => {
-    if (confirm('Are you sure you want to delete this transaction entry?')) {
+    if (confirm('Вы действительно хотите удалить эту запись?')) {
       await deleteTx.mutateAsync(id);
     }
   };
@@ -66,16 +69,16 @@ export const FinancePage: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-emerald-400" />
-            Finance & Workshop Analytics
+            Финансы и аналитика мастерской
           </h2>
-          <p className="text-xs text-slate-400">Cash flow, margins, COGS & operating expense ledger</p>
+          <p className="text-xs text-slate-400">Денежные потоки, маржинальность, себестоимость и расходы</p>
         </div>
         <button
           onClick={() => setIsExpenseModalOpen(true)}
           className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition shadow-md shadow-emerald-500/20"
         >
           <Plus className="w-4 h-4" />
-          <span>Record Expense</span>
+          <span>Записать расход</span>
         </button>
       </div>
 
@@ -89,14 +92,14 @@ export const FinancePage: React.FC = () => {
           {/* Gross Revenue */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Gross Revenue</span>
+              <span>Валовая выручка</span>
               <TrendingUp className="w-4 h-4 text-emerald-400" />
             </div>
             <p className="text-base font-extrabold text-white">
               {summary.revenue.toLocaleString('ru-RU')} <span className="text-xs font-medium text-slate-400">сум</span>
             </p>
             <div className="text-[10px] text-slate-500 flex items-center gap-1">
-              <span>Unpaid Debt:</span>
+              <span>Долг клиентов:</span>
               <strong className={summary.unpaidBalance > 0 ? 'text-amber-400' : 'text-slate-400'}>
                 {summary.unpaidBalance.toLocaleString('ru-RU')} сум
               </strong>
@@ -106,66 +109,132 @@ export const FinancePage: React.FC = () => {
           {/* Net Profit & Margin % */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Net Profit</span>
+              <span>Чистая прибыль</span>
               <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
-                {summary.marginPercentage}% margin
+                {summary.marginPercentage}% маржа
               </span>
             </div>
             <p className="text-base font-extrabold text-emerald-400">
               {summary.netProfit.toLocaleString('ru-RU')} <span className="text-xs font-medium text-slate-400">сум</span>
             </p>
             <div className="text-[10px] text-slate-500">
-              After COGS & OpEx deductions
+              За вычетом себестоимости и расходов
             </div>
           </div>
 
           {/* Cost of Goods Sold (COGS) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Material COGS</span>
+              <span>Себестоимость сырья (COGS)</span>
               <Layers className="w-4 h-4 text-blue-400" />
             </div>
             <p className="text-base font-bold text-slate-200">
               {summary.cogs.toLocaleString('ru-RU')} <span className="text-xs font-medium text-slate-400">сум</span>
             </p>
             <div className="text-[10px] text-slate-500">
-              Filament + extra hardware cost
+              Филамент + доп. фурнитура
             </div>
           </div>
 
           {/* Operating Expenses (OpEx) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>OpEx Expenses</span>
+              <span>Операционные расходы (OpEx)</span>
               <TrendingDown className="w-4 h-4 text-rose-400" />
             </div>
             <p className="text-base font-bold text-rose-400">
               {summary.opex.toLocaleString('ru-RU')} <span className="text-xs font-medium text-slate-400">сум</span>
             </p>
             <div className="text-[10px] text-slate-500">
-              Electricity, tools & maintenance
+              Электричество, инструмент, аренда
             </div>
           </div>
         </div>
       )}
 
-      {/* Inventory Stock Valuation Banner */}
-      {summary && (
-        <div className="bg-gradient-to-r from-slate-900 via-indigo-950/40 to-slate-900 border border-indigo-500/20 rounded-2xl p-3.5 flex items-center justify-between text-xs">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-8 h-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
-              <Layers className="w-4 h-4" />
+      {/* Filament Stock Yield & Revenue Potential Card */}
+      {summary?.filamentYield && summary.filamentYield.totalStockG > 0 && (
+        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-emerald-500/20 rounded-2xl p-4 space-y-3.5 shadow-lg relative overflow-hidden">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex items-center gap-2.5">
+              <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  Потенциал дохода из остатков пластика
+                </h3>
+                <p className="text-[10px] text-slate-400">
+                  Прогноз выручки на основе каталога моделей и запасов филамента
+                </p>
+              </div>
             </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">Filament Inventory Valuation</span>
-              <span className="font-bold text-white text-sm">
-                {summary.inventoryValuation.toLocaleString('ru-RU')} сум
+
+            {summary.filamentYield.potentialRoiMultiplier > 0 && (
+              <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-lg shrink-0">
+                {summary.filamentYield.potentialRoiMultiplier}x отдача сырья
+              </span>
+            )}
+          </div>
+
+          {/* Main 2 Highlight Metrics */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <Coins className="w-3 h-3 text-emerald-400" />
+                Потенциальная выручка:
+              </span>
+              <p className="text-base font-extrabold text-white">
+                {summary.filamentYield.potentialRevenue.toLocaleString('ru-RU')}{' '}
+                <span className="text-xs font-medium text-slate-400">сум</span>
+              </p>
+              <span className="text-[10px] text-slate-500 block">
+                из расчёта ~{summary.filamentYield.potentialModelsCount} готовых моделей
+              </span>
+            </div>
+
+            <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1">
+              <span className="text-[10px] text-slate-400 flex items-center gap-1">
+                <TrendingUp className="w-3 h-3 text-emerald-400" />
+                Потенциальная прибыль:
+              </span>
+              <p className="text-base font-extrabold text-emerald-400">
+                +{summary.filamentYield.potentialNetProfit.toLocaleString('ru-RU')}{' '}
+                <span className="text-xs font-medium text-slate-400">сум</span>
+              </p>
+              <span className="text-[10px] text-slate-500 block">
+                чистыми после вычета себестоимости пластика ({summary.filamentYield.inventoryValuation.toLocaleString('ru-RU')} сум)
               </span>
             </div>
           </div>
-          <span className="text-[10px] bg-slate-800 text-slate-300 px-2.5 py-1 rounded-xl border border-slate-700">
-            Stock Assets
-          </span>
+
+          {/* Transparent Formula Breakdown */}
+          <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div>
+              <span className="text-[10px] text-slate-500 block">Запасы филамента:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.totalStockG.toLocaleString('ru-RU')} г
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Ср. расход на модель:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.avgCatalogWeightG} г
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Ср. цена модели:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.avgCatalogPrice.toLocaleString('ru-RU')} сум
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Выручка с 1г пластика:</span>
+              <span className="font-semibold text-emerald-400">
+                {summary.filamentYield.avgRevenuePerGram.toLocaleString('ru-RU')} сум/г
+              </span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -173,7 +242,7 @@ export const FinancePage: React.FC = () => {
       <div className="space-y-2">
         <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
           <Calendar className="w-4 h-4 text-blue-400" />
-          Monthly Financial Breakdown
+          Финансовая динамика по месяцам
         </h3>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2 text-xs">
           {monthly?.map((m) => (
@@ -181,15 +250,15 @@ export const FinancePage: React.FC = () => {
               <span className="font-semibold text-slate-300 text-xs w-20">{m.month}</span>
               <div className="flex items-center space-x-4 text-right">
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Rev</span>
+                  <span className="text-[10px] text-slate-500 block">Выручка</span>
                   <span className="font-semibold text-white">{m.revenue.toLocaleString('ru-RU')}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block">OpEx</span>
+                  <span className="text-[10px] text-slate-500 block">Расход</span>
                   <span className="font-semibold text-rose-400">-{m.opex.toLocaleString('ru-RU')}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Profit</span>
+                  <span className="text-[10px] text-slate-500 block">Прибыль</span>
                   <span className={`font-bold ${m.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
                     {m.netProfit.toLocaleString('ru-RU')} сум
                   </span>
@@ -200,51 +269,93 @@ export const FinancePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Rankings: Top Models & Top Clients */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Top Models */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
-          <h4 className="text-xs font-bold text-white flex items-center gap-1">
-            <Box className="w-3.5 h-3.5 text-indigo-400" />
-            Top Profitable Models
-          </h4>
+      {/* Top Rankings: Top Models & Top Clients (2 separate rows) */}
+      <div className="space-y-3">
+        {/* Row 1: Top Profitable Models */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Box className="w-4 h-4 text-indigo-400" />
+              Топ прибыльных моделей
+            </h4>
+            <span className="text-[10px] text-slate-500 font-medium">По чистой прибыли</span>
+          </div>
+
           <div className="space-y-1.5">
-            {topModels?.map((tm, idx) => (
-              <div key={tm.id} className="flex items-center justify-between text-[11px] bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-                <div>
-                  <span className="font-semibold text-white block line-clamp-1">
-                    {idx + 1}. {tm.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500">{tm.totalQuantity} printed</span>
+            {(!topModels || topModels.length === 0) ? (
+              <p className="text-xs text-slate-500 italic py-1">Нет данных по моделям</p>
+            ) : (
+              topModels.map((tm, idx) => (
+                <div
+                  key={tm.id}
+                  className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
+                      #{idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-white block truncate">
+                        {tm.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {tm.totalQuantity} шт. &bull; Выручка: {tm.totalRevenue.toLocaleString('ru-RU')} сум
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <span className="font-bold text-emerald-400 block">
+                      +{tm.netProfit.toLocaleString('ru-RU')} сум
+                    </span>
+                    <span className="text-[9px] text-slate-500 uppercase font-semibold">Прибыль</span>
+                  </div>
                 </div>
-                <span className="font-bold text-emerald-400 shrink-0">
-                  +{tm.netProfit.toLocaleString('ru-RU')}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        {/* Top Clients */}
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2">
-          <h4 className="text-xs font-bold text-white flex items-center gap-1">
-            <Users className="w-3.5 h-3.5 text-blue-400" />
-            Top Clients by Revenue
-          </h4>
+        {/* Row 2: Top Clients by Revenue */}
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+              <Users className="w-4 h-4 text-blue-400" />
+              Топ клиентов по выручке
+            </h4>
+            <span className="text-[10px] text-slate-500 font-medium">По общей сумме</span>
+          </div>
+
           <div className="space-y-1.5">
-            {topClients?.map((tc, idx) => (
-              <div key={tc.id} className="flex items-center justify-between text-[11px] bg-slate-950 p-2 rounded-xl border border-slate-800/80">
-                <div>
-                  <span className="font-semibold text-white block line-clamp-1">
-                    {idx + 1}. {tc.name}
-                  </span>
-                  <span className="text-[10px] text-slate-500">{tc.totalOrders} orders</span>
+            {(!topClients || topClients.length === 0) ? (
+              <p className="text-xs text-slate-500 italic py-1">Нет данных по клиентам</p>
+            ) : (
+              topClients.map((tc, idx) => (
+                <div
+                  key={tc.id}
+                  className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
+                      #{idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-white block truncate">
+                        {tc.name}
+                      </span>
+                      <span className="text-[10px] text-slate-400">
+                        {tc.totalOrders} {tc.totalOrders === 1 ? 'заказ' : (tc.totalOrders >= 2 && tc.totalOrders <= 4 ? 'заказа' : 'заказов')}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <span className="font-bold text-white block">
+                      {tc.totalSpent.toLocaleString('ru-RU')} сум
+                    </span>
+                    <span className="text-[9px] text-emerald-400 font-semibold uppercase">Выручка</span>
+                  </div>
                 </div>
-                <span className="font-bold text-white shrink-0">
-                  {tc.totalSpent.toLocaleString('ru-RU')}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -254,7 +365,7 @@ export const FinancePage: React.FC = () => {
         <div className="flex items-center justify-between">
           <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
             <Tag className="w-4 h-4 text-emerald-400" />
-            Expense & Income Ledger
+            Журнал расходов и доходов
           </h3>
         </div>
 
@@ -268,7 +379,7 @@ export const FinancePage: React.FC = () => {
                 : 'bg-slate-900 text-slate-400 border-slate-800 hover:text-white'
             }`}
           >
-            All Categories
+            Все категории
           </button>
           {Object.entries(categoryLabels).map(([catKey, catVal]) => (
             <button
@@ -292,7 +403,7 @@ export const FinancePage: React.FC = () => {
           </div>
         ) : transactions?.length === 0 ? (
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-center text-slate-500 text-xs">
-            No transaction records found.
+            Записей расходов пока нет.
           </div>
         ) : (
           <div className="space-y-2">
@@ -315,7 +426,7 @@ export const FinancePage: React.FC = () => {
                         <span className="font-bold text-white">{catInfo.label}</span>
                         {tx.order && (
                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                            Order #{tx.order.orderNumber}
+                            Заказ #100{tx.order.orderNumber}
                           </span>
                         )}
                       </div>
@@ -333,6 +444,7 @@ export const FinancePage: React.FC = () => {
                     <button
                       onClick={() => handleDeleteTx(tx.id)}
                       className="text-slate-500 hover:text-red-400 p-1"
+                      title="Удалить запись"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>

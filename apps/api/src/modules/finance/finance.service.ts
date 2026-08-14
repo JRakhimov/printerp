@@ -7,6 +7,8 @@ import {
   MonthlyAnalytics,
   TopModelMetric,
   TopClientMetric,
+  FilamentYieldMetric,
+  getClientDisplayName,
 } from '@printerp/shared';
 
 @Injectable()
@@ -138,18 +140,72 @@ export class FinanceService {
     const netProfit = netRevenue - totalCogs - totalOpex;
     const marginPercentage = netRevenue > 0 ? Math.round((netProfit / netRevenue) * 100) : 0;
 
-    // 3. Filament Inventory Valuation
+    // 3. Filament Inventory Valuation & Yield Potential
     const filaments = await this.prisma.filament.findMany({
       where: { deletedAt: null },
       select: { stockG: true, costPerGram: true },
     });
 
+    let totalStockG = 0;
     let inventoryValuation = 0;
     for (const fil of filaments) {
-      if (fil.stockG && fil.stockG > 0) {
-        inventoryValuation += Math.round(fil.stockG * Number(fil.costPerGram));
+      const stock = fil.stockG || 0;
+      if (stock > 0) {
+        totalStockG += stock;
+        inventoryValuation += Math.round(stock * Number(fil.costPerGram));
       }
     }
+
+    // 4. Catalog Models Average Price & Weight Metrics
+    const catalogProjects = await this.prisma.project.findMany({
+      where: { deletedAt: null },
+      select: {
+        defaultPrice: true,
+        weightG: true,
+        projectFilaments: {
+          select: { grams: true },
+        },
+      },
+    });
+
+    let totalProjectsWeight = 0;
+    let totalProjectsPrice = 0;
+    let validProjectsCount = 0;
+
+    for (const p of catalogProjects) {
+      if (p.defaultPrice > 0) {
+        let weight = p.weightG;
+        if (!weight || weight <= 0) {
+          weight = p.projectFilaments.reduce((acc, pf) => acc + pf.grams, 0);
+        }
+        if (weight <= 0) weight = 50; // fallback standard 50g print if unconfigured
+
+        totalProjectsWeight += weight;
+        totalProjectsPrice += p.defaultPrice;
+        validProjectsCount++;
+      }
+    }
+
+    const avgCatalogPrice = validProjectsCount > 0 ? Math.round(totalProjectsPrice / validProjectsCount) : 0;
+    const avgCatalogWeightG = validProjectsCount > 0 ? Math.round(totalProjectsWeight / validProjectsCount) : 50;
+    const avgRevenuePerGram = avgCatalogWeightG > 0 ? Math.round(avgCatalogPrice / avgCatalogWeightG) : 0;
+
+    const potentialModelsCount = avgCatalogWeightG > 0 ? Math.floor(totalStockG / avgCatalogWeightG) : 0;
+    const potentialRevenue = potentialModelsCount * avgCatalogPrice;
+    const potentialNetProfit = Math.max(0, potentialRevenue - inventoryValuation);
+    const potentialRoiMultiplier = inventoryValuation > 0 ? Number((potentialRevenue / inventoryValuation).toFixed(1)) : 0;
+
+    const filamentYield: FilamentYieldMetric = {
+      totalStockG,
+      inventoryValuation,
+      avgCatalogPrice,
+      avgCatalogWeightG,
+      avgRevenuePerGram,
+      potentialModelsCount,
+      potentialRevenue,
+      potentialNetProfit,
+      potentialRoiMultiplier,
+    };
 
     return {
       revenue: netRevenue,
@@ -159,6 +215,7 @@ export class FinanceService {
       marginPercentage,
       unpaidBalance,
       inventoryValuation,
+      filamentYield,
     };
   }
 
@@ -279,7 +336,7 @@ export class FinanceService {
 
       return {
         id: c.id,
-        name: c.name,
+        name: getClientDisplayName(c),
         telegramUsername: c.telegramUsername,
         totalOrders,
         totalSpent,

@@ -10,14 +10,14 @@ interface BottomNavProps {
 
 export const BottomNav: React.FC<BottomNavProps> = ({ activeTab, onSelectTab }) => {
   const navItems = [
-    { id: 'home' as TabType, label: 'Home', icon: Home },
-    { id: 'orders' as TabType, label: 'Orders', icon: Package },
-    { id: 'projects' as TabType, label: 'Projects', icon: Box },
-    { id: 'more' as TabType, label: 'More', icon: MoreHorizontal },
+    { id: 'home' as TabType, label: 'Главная', icon: Home },
+    { id: 'orders' as TabType, label: 'Заказы', icon: Package },
+    { id: 'projects' as TabType, label: 'Модели', icon: Box },
+    { id: 'more' as TabType, label: 'Ещё', icon: MoreHorizontal },
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 py-1.5 shadow-lg">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 bg-slate-900/95 backdrop-blur border-t border-slate-800 px-2 pt-1.5 pb-[max(0.375rem,env(safe-area-inset-bottom,0px))] shadow-lg">
       <div className="max-w-md mx-auto flex items-center justify-around">
         {navItems.map((item) => {
           const Icon = item.icon;

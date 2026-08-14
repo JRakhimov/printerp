@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useOrders, OrderStatus, PaymentStatus } from '../hooks/useOrders';
+import { getClientDisplayName } from '@printerp/shared';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle, Pencil } from 'lucide-react';
@@ -45,20 +46,52 @@ export const OrdersPage: React.FC = () => {
     }
   };
 
+  const getStatusLabel = (status: OrderStatus) => {
+    switch (status) {
+      case OrderStatus.CREATED:
+        return 'СОЗДАН';
+      case OrderStatus.DESIGN:
+        return 'ДИЗАЙН';
+      case OrderStatus.PRINTING:
+        return 'В ПЕЧАТИ';
+      case OrderStatus.PRINTED:
+        return 'НАПЕЧАТАН';
+      case OrderStatus.COMPLETED:
+        return 'ВЫПОЛНЕН';
+      case OrderStatus.CANCELLED:
+        return 'ОТМЕНЁН';
+      default:
+        return status;
+    }
+  };
+
+  const getPaymentStatusLabel = (status: PaymentStatus) => {
+    switch (status) {
+      case PaymentStatus.PAID:
+        return 'ОПЛАЧЕН';
+      case PaymentStatus.PARTIALLY_PAID:
+        return 'ЧАСТИЧНО';
+      case PaymentStatus.UNPAID:
+        return 'НЕ ОПЛАЧЕН';
+      default:
+        return status;
+    }
+  };
+
   return (
     <div className="space-y-4 pb-20">
       {/* Header action bar */}
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
           <ShoppingBag className="w-5 h-5 text-emerald-400" />
-          Orders Management
+          Заказы
         </h2>
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center space-x-1.5 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition shadow-md shadow-emerald-500/20"
         >
           <Plus className="w-4 h-4" />
-          <span>New Order</span>
+          <span>Новый заказ</span>
         </button>
       </div>
 
@@ -69,7 +102,7 @@ export const OrdersPage: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search orders by client name, comment, or model..."
+          placeholder="Поиск по клиенту, комментарию или модели..."
           className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-500"
         />
       </div>
@@ -82,7 +115,7 @@ export const OrdersPage: React.FC = () => {
             statusFilter === undefined ? 'bg-emerald-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          All Orders
+          Все заказы
         </button>
         <button
           onClick={() => setStatusFilter(OrderStatus.PRINTING)}
@@ -90,7 +123,7 @@ export const OrdersPage: React.FC = () => {
             statusFilter === OrderStatus.PRINTING ? 'bg-amber-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          Printing
+          В печати
         </button>
         <button
           onClick={() => setStatusFilter(OrderStatus.PRINTED)}
@@ -98,7 +131,7 @@ export const OrdersPage: React.FC = () => {
             statusFilter === OrderStatus.PRINTED ? 'bg-sky-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          Printed
+          Напечатано
         </button>
         <button
           onClick={() => setStatusFilter(OrderStatus.COMPLETED)}
@@ -106,7 +139,7 @@ export const OrdersPage: React.FC = () => {
             statusFilter === OrderStatus.COMPLETED ? 'bg-emerald-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          Completed
+          Выполнены
         </button>
       </div>
 
@@ -121,8 +154,8 @@ export const OrdersPage: React.FC = () => {
       {!isLoading && orders?.length === 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400 space-y-2">
           <ShoppingBag className="w-8 h-8 text-slate-600 mx-auto" />
-          <p className="text-sm font-medium">No orders found</p>
-          <p className="text-xs text-slate-500">Create your first client order to start tracking 3D printing jobs.</p>
+          <p className="text-sm font-medium">Заказы не найдены</p>
+          <p className="text-xs text-slate-500">Создайте первый заказ клиента, чтобы начать отслеживание печати.</p>
         </div>
       )}
 
@@ -139,12 +172,7 @@ export const OrdersPage: React.FC = () => {
                 <div>
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
                     <span className="text-xs font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
-                    <h3 className="text-sm font-bold text-white">{order.client?.name}</h3>
-                    {order.client?.city && (
-                      <span className="text-[10px] font-medium text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20">
-                        {order.client.city}
-                      </span>
-                    )}
+                    <h3 className="text-sm font-bold text-white">{getClientDisplayName(order.client)}</h3>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {order.items?.map((i) => `${i.projectNameSnapshot} (${i.quantity}x)`).join(', ')}
@@ -153,12 +181,12 @@ export const OrdersPage: React.FC = () => {
 
                 <div className="flex items-center space-x-2">
                   <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl border ${getStatusBadge(order.status)}`}>
-                    {order.status}
+                    {getStatusLabel(order.status)}
                   </span>
                   <button
                     onClick={(e) => handleEdit(e, order.id)}
                     className="text-slate-400 hover:text-emerald-400 p-1"
-                    title="Edit Order"
+                    title="Редактировать заказ"
                   >
                     <Pencil className="w-3.5 h-3.5" />
                   </button>
@@ -175,7 +203,7 @@ export const OrdersPage: React.FC = () => {
                     order.paymentStatus === PaymentStatus.PAID ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                     order.paymentStatus === PaymentStatus.PARTIALLY_PAID ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
                   }`}>
-                    {order.paymentStatus}
+                    {getPaymentStatusLabel(order.paymentStatus)}
                   </span>
                 </div>
 

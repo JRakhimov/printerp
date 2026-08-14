@@ -24,6 +24,9 @@ export const UpdateOrderSchema = z.object({
   comment: z.string().optional().nullable(),
   items: z.array(OrderItemInputSchema).min(1, 'At least one model item is required').optional(),
   finalPrice: z.number().min(0).optional(),
+  depositAmount: z.number().min(0).optional(),
+  depositComment: z.string().optional(),
+  paymentStatus: z.nativeEnum(PaymentStatus).optional(),
 });
 
 export const ChangeOrderStatusSchema = z.object({

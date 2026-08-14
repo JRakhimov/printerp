@@ -53,13 +53,13 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-emerald-400" />
-            Record Transaction / Expense
+            Добавить операцию / расход
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -78,7 +78,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Expense (-)
+              Расход (-)
             </button>
             <button
               type="button"
@@ -89,14 +89,14 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              Income (+)
+              Доход (+)
             </button>
           </div>
 
           {/* Amount Input */}
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">
-              Amount (UZS / сум) *
+              Сумма (сум) *
             </label>
             <input
               {...register('amount', { valueAsNumber: true })}
@@ -111,18 +111,18 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
               <Tag className="w-3.5 h-3.5 text-indigo-400" />
-              Category *
+              Категория *
             </label>
             <select
               {...register('category')}
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
             >
-              <option value={ExpenseCategory.FILAMENT}>Filament Purchase</option>
-              <option value={ExpenseCategory.ELECTRICITY}>Electricity Bill</option>
-              <option value={ExpenseCategory.PRINTER_PARTS}>Printer Parts & Maintenance</option>
-              <option value={ExpenseCategory.TOOLS}>Tools & Accessories</option>
-              <option value={ExpenseCategory.DELIVERY}>Packaging & Delivery</option>
-              <option value={ExpenseCategory.OTHER}>Other Expenses</option>
+              <option value={ExpenseCategory.FILAMENT}>Закупка филамента</option>
+              <option value={ExpenseCategory.ELECTRICITY}>Электричество</option>
+              <option value={ExpenseCategory.PRINTER_PARTS}>Запчасти и обслуживание</option>
+              <option value={ExpenseCategory.TOOLS}>Инструменты и аксессуары</option>
+              <option value={ExpenseCategory.DELIVERY}>Упаковка и доставка</option>
+              <option value={ExpenseCategory.OTHER}>Прочие расходы</option>
             </select>
           </div>
 
@@ -130,7 +130,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
               <Calendar className="w-3.5 h-3.5 text-blue-400" />
-              Date
+              Дата
             </label>
             <input
               {...register('date')}
@@ -143,12 +143,12 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
               <MessageSquare className="w-3.5 h-3.5 text-slate-400" />
-              Description / Comment
+              Описание / Комментарий
             </label>
             <textarea
               {...register('comment')}
               rows={2}
-              placeholder="e.g. 2x PETG White spools purchase, 0.4mm hardened nozzle..."
+              placeholder="напр. Покупка 2 катушек PETG, сопло 0.4мм..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
             />
           </div>
@@ -160,7 +160,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
               onClick={onClose}
               className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
             >
-              Cancel
+              Отмена
             </button>
             <button
               type="submit"
@@ -168,7 +168,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition shadow-md shadow-emerald-500/20"
             >
               {createTx.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>Save Transaction</span>
+              <span>Сохранить запись</span>
             </button>
           </div>
         </form>

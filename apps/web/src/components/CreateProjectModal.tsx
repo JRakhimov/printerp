@@ -92,12 +92,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <Box className="w-4 h-4 text-indigo-400" />
-            Add New 3D Project Model
+            Добавить 3D-модель в каталог
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -106,21 +106,21 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Model Name *</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Название модели *</label>
             <input
               {...register('name')}
-              placeholder="e.g. Articulated Dragon"
+              placeholder="напр. Подвижный дракон"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
             {errors.name && <p className="text-[11px] text-red-400 mt-1">{errors.name.message}</p>}
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Description</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Описание модели</label>
             <textarea
               {...register('description')}
               rows={2}
-              placeholder="Model description..."
+              placeholder="Описание модели..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
           </div>
@@ -130,7 +130,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <LinkIcon className="w-3.5 h-3.5 text-indigo-400" />
-                3D Model Link (URL)
+                Ссылка на модель (URL)
               </label>
               <input
                 {...register('modelUrl')}
@@ -143,7 +143,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                Photo URL
+                Ссылка на фото (URL)
               </label>
               <input
                 {...register('imageUrl')}
@@ -158,7 +158,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
             <div className="flex items-center justify-between">
               <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-                Filament Consumption
+                Расход филамента
               </label>
               <button
                 type="button"
@@ -166,12 +166,12 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                 className="text-[11px] text-indigo-400 hover:text-indigo-300 font-medium flex items-center gap-1"
               >
                 <Plus className="w-3.5 h-3.5" />
-                Add Filament
+                Добавить филамент
               </button>
             </div>
 
             {selectedFilaments.length === 0 ? (
-              <p className="text-[11px] text-slate-500 italic">No filaments added yet.</p>
+              <p className="text-[11px] text-slate-500 italic">Филамент пока не добавлен.</p>
             ) : (
               <div className="space-y-2">
                 {selectedFilaments.map((row, idx) => (
@@ -193,17 +193,17 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
                         type="number"
                         value={row.grams}
                         onChange={(e) => updateFilamentRow(idx, 'grams', e.target.value)}
-                        placeholder="Grams"
+                        placeholder="Граммы"
                         className="w-full min-w-0 bg-transparent text-xs text-white placeholder-slate-500 focus:outline-none"
                       />
-                      <span className="text-[11px] font-semibold text-slate-400 ml-1 shrink-0">g</span>
+                      <span className="text-[11px] font-semibold text-slate-400 ml-1 shrink-0">г</span>
                     </div>
 
                     <button
                       type="button"
                       onClick={() => removeFilamentRow(idx)}
                       className="text-slate-500 hover:text-red-400 p-1 shrink-0"
-                      title="Remove Filament"
+                      title="Удалить филамент"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
@@ -214,17 +214,17 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
             {/* Metric preview box */}
             <div className="mt-2 pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px]">
-              <span className="text-slate-400">Total Weight: <strong className="text-white">{estimatedWeight}g</strong></span>
+              <span className="text-slate-400">Общий вес: <strong className="text-white">{estimatedWeight} г</strong></span>
               <span className="text-slate-400 flex items-center gap-1">
                 <Calculator className="w-3 h-3 text-indigo-400" />
-                Est. Cost: <strong className="text-emerald-400">{estimatedTotalCost.toLocaleString('ru-RU')} сум</strong>
+                Себестоимость: <strong className="text-emerald-400">{estimatedTotalCost.toLocaleString('ru-RU')} сум</strong>
               </span>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Client Selling Price (сум) *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Цена продажи клиенту (сум) *</label>
               <input
                 {...register('defaultPrice', { valueAsNumber: true })}
                 type="number"
@@ -235,7 +235,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Extra Hardware Cost (сум)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Доп. фурнитура / расходы (сум)</label>
               <input
                 {...register('extraCost', { valueAsNumber: true })}
                 type="number"
@@ -247,7 +247,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
 
           <div className="grid grid-cols-4 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Print Time (min)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Время (мин)</label>
               <input
                 {...register('printTimeMinutes', { valueAsNumber: true })}
                 type="number"
@@ -256,7 +256,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Size X (mm)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Размер X (мм)</label>
               <input
                 {...register('sizeXMm', { valueAsNumber: true })}
                 type="number"
@@ -265,7 +265,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Size Y (mm)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Размер Y (мм)</label>
               <input
                 {...register('sizeYMm', { valueAsNumber: true })}
                 type="number"
@@ -274,7 +274,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Size Z (mm)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Размер Z (мм)</label>
               <input
                 {...register('sizeZMm', { valueAsNumber: true })}
                 type="number"
@@ -285,11 +285,11 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Comments & Printing Notes</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Заметки и параметры печати</label>
             <textarea
               {...register('notes')}
               rows={2}
-              placeholder="Print settings, infill, nozzle temp..."
+              placeholder="Параметры печати, заполнение, поддержки..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
           </div>
@@ -300,7 +300,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               onClick={onClose}
               className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
             >
-              Cancel
+              Отмена
             </button>
             <button
               type="submit"
@@ -308,7 +308,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition shadow-md shadow-indigo-500/20"
             >
               {createProject.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>Save Model</span>
+              <span>Сохранить модель</span>
             </button>
           </div>
         </form>

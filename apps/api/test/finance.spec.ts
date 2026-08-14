@@ -26,6 +26,9 @@ describe('FinanceService', () => {
     client: {
       findMany: jest.fn(),
     },
+    project: {
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -98,6 +101,10 @@ describe('FinanceService', () => {
         { stockG: 1000, costPerGram: 250 },
       ]);
 
+      mockPrismaService.project.findMany.mockResolvedValue([
+        { defaultPrice: 50000, weightG: 50, projectFilaments: [] },
+      ]);
+
       const summary = await service.getSummary();
 
       expect(summary.revenue).toBe(200000); // 120000 + 80000
@@ -107,6 +114,8 @@ describe('FinanceService', () => {
       expect(summary.marginPercentage).toBe(35); // Math.round((70000/200000)*100)
       expect(summary.unpaidBalance).toBe(40000); // 200000 - 160000 paid
       expect(summary.inventoryValuation).toBe(250000);
+      expect(summary.filamentYield?.totalStockG).toBe(1000);
+      expect(summary.filamentYield?.potentialRevenue).toBe(1000000); // 20 models * 50000
     });
   });
 });

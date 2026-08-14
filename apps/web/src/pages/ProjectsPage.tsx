@@ -15,7 +15,7 @@ export const ProjectsPage: React.FC = () => {
 
   const handleDelete = async (e: React.MouseEvent, id: string, name: string) => {
     e.stopPropagation();
-    if (confirm(`Are you sure you want to delete project "${name}"?`)) {
+    if (confirm(`Вы уверены, что хотите удалить модель "${name}"?`)) {
       await deleteProject.mutateAsync(id);
     }
   };
@@ -36,14 +36,14 @@ export const ProjectsPage: React.FC = () => {
       <div className="flex items-center justify-between">
         <h2 className="text-base font-bold text-white flex items-center gap-2">
           <Box className="w-5 h-5 text-indigo-400" />
-          3D Projects Catalog
+          Каталог 3D-моделей
         </h2>
         <button
           onClick={() => setIsCreateModalOpen(true)}
           className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-2 rounded-xl transition shadow-md shadow-indigo-500/20"
         >
           <Plus className="w-4 h-4" />
-          <span>New Model</span>
+          <span>Новая модель</span>
         </button>
       </div>
 
@@ -54,7 +54,7 @@ export const ProjectsPage: React.FC = () => {
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          placeholder="Search models by name or description..."
+          placeholder="Поиск моделей по названию или описанию..."
           className="w-full bg-slate-900 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-indigo-500"
         />
       </div>
@@ -70,8 +70,8 @@ export const ProjectsPage: React.FC = () => {
       {!isLoading && projects?.length === 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400 space-y-2">
           <Box className="w-8 h-8 text-slate-600 mx-auto" />
-          <p className="text-sm font-medium">No 3D projects found</p>
-          <p className="text-xs text-slate-500">Create your first 3D print model to enable order estimates.</p>
+          <p className="text-sm font-medium">Модели не найдены</p>
+          <p className="text-xs text-slate-500">Создайте первую модель для быстрого расчёта и добавления в заказы.</p>
         </div>
       )}
 
@@ -113,14 +113,14 @@ export const ProjectsPage: React.FC = () => {
                 <button
                   onClick={(e) => handleEdit(e, project.id)}
                   className="text-slate-400 hover:text-indigo-400 p-1"
-                  title="Edit Model"
+                  title="Редактировать модель"
                 >
                   <Pencil className="w-3.5 h-3.5" />
                 </button>
                 <button
                   onClick={(e) => handleDelete(e, project.id, project.name)}
                   className="text-slate-500 hover:text-red-400 p-1"
-                  title="Delete Model"
+                  title="Удалить модель"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -139,8 +139,8 @@ export const ProjectsPage: React.FC = () => {
                       className="w-2 h-2 rounded-full inline-block"
                       style={{ backgroundColor: pf.filament?.color || '#3b82f6' }}
                     />
-                    <span>{pf.filament?.name || 'Filament'}</span>
-                    <strong className="text-slate-100">{pf.grams}g</strong>
+                    <span>{pf.filament?.name || 'Филамент'}</span>
+                    <strong className="text-slate-100">{pf.grams}г</strong>
                   </span>
                 ))}
               </div>
@@ -151,17 +151,17 @@ export const ProjectsPage: React.FC = () => {
               <div className="flex items-center space-x-3 text-[11px]">
                 <span className="flex items-center gap-1 text-slate-300">
                   <Layers className="w-3.5 h-3.5 text-blue-400" />
-                  {project.weightG}g total
+                  {project.weightG}г всего
                 </span>
                 <span className="flex items-center gap-1 text-slate-300">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />
-                  Cost: <strong className="text-white">{Number(project.defaultCost).toLocaleString('ru-RU')} сум</strong>
+                  Себестоимость: <strong className="text-white">{Number(project.defaultCost).toLocaleString('ru-RU')} сум</strong>
                 </span>
               </div>
               {project.printTimeMinutes && (
                 <span className="flex items-center gap-1 text-[11px] text-slate-400">
                   <Clock className="w-3 h-3 text-slate-500" />
-                  {Math.floor(project.printTimeMinutes / 60)}h {project.printTimeMinutes % 60}m
+                  {Math.floor(project.printTimeMinutes / 60)}ч {project.printTimeMinutes % 60}м
                 </span>
               )}
             </div>

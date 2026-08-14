@@ -33,7 +33,7 @@ const MainContent: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center space-y-3 text-slate-400">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-        <p className="text-sm font-medium">Authenticating Telegram session...</p>
+        <p className="text-sm font-medium">Авторизация Telegram сессии...</p>
       </div>
     );
   }
@@ -45,7 +45,7 @@ const MainContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col">
       <Header />
-      <main className="flex-1 p-4 max-w-md mx-auto w-full">
+      <main className="flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] max-w-md mx-auto w-full">
         {activeTab === 'home' && <HomePage />}
         {activeTab === 'orders' && <OrdersPage />}
         {activeTab === 'projects' && <ProjectsPage />}

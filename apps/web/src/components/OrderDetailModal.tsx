@@ -9,6 +9,8 @@ import {
 } from '../hooks/useOrders';
 import { useClients } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
+import { getClientDisplayName } from '@printerp/shared';
+import { ClientSelect } from './ClientSelect';
 import {
   X,
   Calendar,
@@ -27,6 +29,7 @@ import {
   ShoppingBag,
   Plus,
   Box,
+  CreditCard,
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -54,6 +57,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   // Editable form fields
   const [editClientId, setEditClientId] = useState('');
   const [editFinalPrice, setEditFinalPrice] = useState<string>('');
+  const [editDeposit, setEditDeposit] = useState<string>('');
+  const [editDepositComment, setEditDepositComment] = useState<string>('');
   const [editDeadline, setEditDeadline] = useState('');
   const [editComment, setEditComment] = useState('');
   const [editStatus, setEditStatus] = useState<OrderStatus>(OrderStatus.CREATED);
@@ -67,6 +72,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     if (order) {
       setEditClientId(order.clientId || '');
       setEditFinalPrice((order.finalPrice ?? order.calculatedPrice ?? 0).toString());
+      const paid = (order.payments || []).reduce((acc, p) => acc + p.amount, 0);
+      setEditDeposit(paid.toString());
+      setEditDepositComment(order.payments?.[0]?.comment || '');
       setEditDeadline(order.deadline ? new Date(order.deadline).toISOString().split('T')[0] : '');
       setEditComment(order.comment || '');
       setEditStatus(order.status || OrderStatus.CREATED);
@@ -88,7 +96,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   const handleRemoveItem = (index: number) => {
     if (editItems.length <= 1) {
-      alert('Order must contain at least one model item');
+      alert('Заказ должен содержать как минимум одну модель');
       return;
     }
     setEditItems((prev) => prev.filter((_, i) => i !== index));
@@ -142,7 +150,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     if (!order) return;
 
     if (editItems.length === 0) {
-      alert('Please add at least one model item to the order');
+      alert('Пожалуйста, добавьте хотя бы одну модель в заказ');
       return;
     }
 
@@ -152,13 +160,15 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         quantity: typeof it.quantity === 'number' ? it.quantity : 1,
       }));
 
-      // 1. Update basic details and items
+      // 1. Update basic details, items, and deposit
       await updateOrder.mutateAsync({
         id: order.id,
         dto: {
           clientId: editClientId,
           items: formattedItems,
           finalPrice: editFinalPrice !== '' ? Number(editFinalPrice) : undefined,
+          depositAmount: editDeposit !== '' ? Math.max(0, Number(editDeposit)) : undefined,
+          depositComment: editDepositComment || undefined,
           deadline: editDeadline ? new Date(editDeadline).toISOString() : null,
           comment: editComment || null,
         },
@@ -177,30 +187,30 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setIsEditing(false);
     } catch (err: any) {
       console.error('Failed to update order:', err);
-      alert(err.response?.data?.message || 'Failed to update order');
+      alert(err.response?.data?.message || 'Ошибка обновления заказа');
     }
   };
 
   const handleDeleteOrder = async () => {
     if (!order) return;
-    if (window.confirm(`Are you sure you want to cancel/delete Order #${order.orderNumber}?`)) {
+    if (window.confirm(`Вы уверены, что хотите отменить/удалить заказ #100${order.orderNumber}?`)) {
       try {
         await deleteOrder.mutateAsync(order.id);
         onClose();
       } catch (err: any) {
         console.error('Failed to delete order:', err);
-        alert(err.response?.data?.message || 'Failed to delete order');
+        alert(err.response?.data?.message || 'Ошибка удаления заказа');
       }
     }
   };
 
   const statusOptions: { status: OrderStatus; label: string; color: string }[] = [
-    { status: OrderStatus.CREATED, label: 'Created', color: 'bg-slate-800 text-slate-300' },
-    { status: OrderStatus.DESIGN, label: '3D Design', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
-    { status: OrderStatus.PRINTING, label: 'Printing', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
-    { status: OrderStatus.PRINTED, label: 'Printed', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
-    { status: OrderStatus.COMPLETED, label: 'Completed', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
-    { status: OrderStatus.CANCELLED, label: 'Cancelled', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
+    { status: OrderStatus.CREATED, label: 'СОЗДАН', color: 'bg-slate-800 text-slate-300' },
+    { status: OrderStatus.DESIGN, label: 'ДИЗАЙН', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
+    { status: OrderStatus.PRINTING, label: 'В ПЕЧАТИ', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
+    { status: OrderStatus.PRINTED, label: 'НАПЕЧАТАН', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+    { status: OrderStatus.COMPLETED, label: 'ВЫПОЛНЕН', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
+    { status: OrderStatus.CANCELLED, label: 'ОТМЕНЁН', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
   ];
 
   const totalPaid = order?.payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
@@ -209,8 +219,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const marginPercentage = (order?.finalPrice || 0) > 0 ? Math.round((profit / (order?.finalPrice || 1)) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
         {isLoading || !order ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
@@ -223,7 +233,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <span className="text-xs font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
                 <h3 className="text-sm font-bold text-white flex items-center gap-2">
                   <User className="w-4 h-4 text-blue-400" />
-                  {isEditing ? 'Edit Order Details' : order.client?.name}
+                  {isEditing ? 'Редактирование заказа' : getClientDisplayName(order.client)}
                 </h3>
               </div>
               <div className="flex items-center space-x-2">
@@ -233,7 +243,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 transition"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    <span>Edit Order</span>
+                    <span>Редактировать</span>
                   </button>
                 ) : (
                   <button
@@ -241,7 +251,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 transition"
                   >
                     <Eye className="w-3.5 h-3.5" />
-                    <span>View Mode</span>
+                    <span>Просмотр</span>
                   </button>
                 )}
                 <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -255,7 +265,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
               <div className="space-y-4">
                 {/* Status Pipeline Buttons */}
                 <div className="space-y-1.5">
-                  <label className="block text-[11px] font-semibold text-slate-400">Update Order Status:</label>
+                  <label className="block text-[11px] font-semibold text-slate-400">Изменить статус заказа:</label>
                   <div className="flex flex-wrap gap-1.5">
                     {statusOptions.map((opt) => {
                       const isActive = order.status === opt.status;
@@ -279,7 +289,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                 {/* Order Items List */}
                 <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
-                  <span className="text-xs font-semibold text-slate-300">Models & Items ({order.items.length})</span>
+                  <span className="text-xs font-semibold text-slate-300">Модели и позиции ({order.items.length})</span>
                   <div className="space-y-2">
                     {order.items.map((item) => (
                       <div
@@ -289,7 +299,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                         <div>
                           <h4 className="text-xs font-bold text-white">{item.projectNameSnapshot}</h4>
                           <p className="text-[10px] text-slate-400">
-                            {item.quantity}x @ {item.unitPrice.toLocaleString('ru-RU')} сум
+                            {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
                           </p>
                         </div>
                         <div className="text-right">
@@ -297,7 +307,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             {item.totalPrice.toLocaleString('ru-RU')} сум
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            Cost: {item.totalCost.toLocaleString('ru-RU')} сум
+                            Себест: {item.totalCost.toLocaleString('ru-RU')} сум
                           </span>
                         </div>
                       </div>
@@ -308,27 +318,27 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 {/* Financial & Payment Summary */}
                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2.5">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Total Price:</span>
+                    <span className="text-slate-400">Итоговая сумма:</span>
                     <span className="font-bold text-white">
                       {Number(order.finalPrice ?? order.calculatedPrice ?? 0).toLocaleString('ru-RU')} сум
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-slate-400">Est. Cost:</span>
+                    <span className="text-slate-400">Себестоимость:</span>
                     <span className="font-semibold text-slate-300">
                       {order.calculatedCost.toLocaleString('ru-RU')} сум
                     </span>
                   </div>
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
-                    <span className="text-slate-400">Est. Net Profit:</span>
+                    <span className="text-slate-400">Чистая прибыль:</span>
                     <span className="font-bold text-emerald-400">
-                      {profit.toLocaleString('ru-RU')} сум ({marginPercentage}% margin)
+                      {profit.toLocaleString('ru-RU')} сум ({marginPercentage}% маржа)
                     </span>
                   </div>
 
                   <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-slate-400">Payment:</span>
+                      <span className="text-slate-400">Оплата:</span>
                       <span
                         className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
                           order.paymentStatus === PaymentStatus.PAID
@@ -338,14 +348,25 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             : 'bg-red-500/10 text-red-400 border border-red-500/20'
                         }`}
                       >
-                        {order.paymentStatus}
+                        {order.paymentStatus === PaymentStatus.PAID
+                          ? 'ОПЛАЧЕН'
+                          : order.paymentStatus === PaymentStatus.PARTIALLY_PAID
+                          ? 'ЧАСТИЧНО'
+                          : 'НЕ ОПЛАЧЕН'}
                       </span>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditing(true)}
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 ml-1 underline cursor-pointer"
+                      >
+                        (Изменить депозит)
+                      </button>
                     </div>
                     <div className="text-right">
-                      <span className="text-[11px] text-slate-300">Paid: {totalPaid.toLocaleString('ru-RU')} сум</span>
+                      <span className="text-[11px] text-slate-300">Внесено: {totalPaid.toLocaleString('ru-RU')} сум</span>
                       {remainingPayment > 0 && (
                         <span className="block text-[10px] text-amber-400 font-medium">
-                          Due: {remainingPayment.toLocaleString('ru-RU')} сум
+                          Остаток: {remainingPayment.toLocaleString('ru-RU')} сум
                         </span>
                       )}
                     </div>
@@ -358,16 +379,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2">
                       <Calendar className="w-4 h-4 text-amber-400" />
                       <div>
-                        <span className="text-[10px] text-slate-400 block">Deadline</span>
+                        <span className="text-[10px] text-slate-400 block">Дедлайн сдачи</span>
                         <span className="font-semibold text-slate-200">
-                          {new Date(order.deadline).toLocaleDateString()}
+                          {new Date(order.deadline).toLocaleDateString('ru-RU')}
                         </span>
                       </div>
                     </div>
                   )}
                   {order.comment && (
                     <div className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 col-span-1 sm:col-span-2">
-                      <span className="text-[10px] text-slate-400 block font-semibold">Notes / Comment</span>
+                      <span className="text-[10px] text-slate-400 block font-semibold">Примечания / Пожелания</span>
                       <p className="text-xs text-slate-300">{order.comment}</p>
                     </div>
                   )}
@@ -376,7 +397,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 {/* Audit Log Events */}
                 {order.events && order.events.length > 0 && (
                   <div className="space-y-1.5 pt-2 border-t border-slate-800">
-                    <span className="text-[11px] font-semibold text-slate-400">Order History & Events:</span>
+                    <span className="text-[11px] font-semibold text-slate-400">История статусов заказа:</span>
                     <div className="space-y-1 max-h-32 overflow-y-auto">
                       {order.events.map((ev) => (
                         <div
@@ -384,7 +405,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           className="text-[11px] bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between text-slate-400"
                         >
                           <span>
-                            Status changed: <strong className="text-white">{ev.newValue}</strong>
+                            Статус изменён: <strong className="text-white">{ev.newValue}</strong>
                           </span>
                           <span className="text-[10px] text-slate-500">
                             {new Date(ev.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -400,24 +421,15 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {/* MODE 2: EDITABLE FORM MODE */}
             {isEditing && (
               <form onSubmit={handleSaveOrder} className="space-y-4">
-                {/* Client Select */}
+                {/* Client Select (Searchable with suggestions) */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Client *</label>
-                  <select
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Клиент *</label>
+                  <ClientSelect
                     value={editClientId}
-                    onChange={(e) => setEditClientId(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                    onChange={setEditClientId}
+                    placeholder="Поиск по @instagram, имени, городу или телефону..."
                     required
-                  >
-                    {(clients || []).map((c) => {
-                      const info = c.instagramUsername || c.telegramUsername || c.notes || c.city || c.phone || c.source;
-                      return (
-                        <option key={c.id} value={c.id}>
-                          {c.name} {info ? `(${info})` : ''}
-                        </option>
-                      );
-                    })}
-                  </select>
+                  />
                 </div>
 
                 {/* Models / Order Items Editor */}
@@ -425,7 +437,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <div className="flex items-center justify-between">
                     <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
                       <Box className="w-3.5 h-3.5 text-indigo-400" />
-                      Order Models & Items ({editItems.length})
+                      Модели заказа ({editItems.length})
                     </label>
                     <button
                       type="button"
@@ -433,7 +445,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       className="text-xs text-indigo-400 hover:text-indigo-300 flex items-center gap-1 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition"
                     >
                       <Plus className="w-3.5 h-3.5" />
-                      <span>Add Model</span>
+                      <span>Выбрать модели</span>
                     </button>
                   </div>
 
@@ -464,7 +476,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           </select>
 
                           <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
-                            <span className="text-[11px] text-slate-400 mr-1.5 shrink-0">Qty:</span>
+                            <span className="text-[11px] text-slate-400 mr-1.5 shrink-0">Кол-во:</span>
                             <input
                               type="number"
                               min="1"
@@ -478,7 +490,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             type="button"
                             onClick={() => handleRemoveItem(idx)}
                             className="text-slate-500 hover:text-rose-400 p-1 shrink-0"
-                            title="Remove item"
+                            title="Удалить модель"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -490,7 +502,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                 {/* Order Status Select */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Order Status</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Статус заказа</label>
                   <select
                     value={editStatus}
                     onChange={(e) => setEditStatus(e.target.value as OrderStatus)}
@@ -498,7 +510,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   >
                     {statusOptions.map((opt) => (
                       <option key={opt.status} value={opt.status}>
-                        {opt.label} ({opt.status})
+                        {opt.label}
                       </option>
                     ))}
                   </select>
@@ -508,9 +520,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
-                      <span>Agreed Price (сум)</span>
+                      <span>Согласованная цена (сум)</span>
                       <span className="text-[10px] text-slate-500 font-normal">
-                        Cat: {editCalculatedPrice.toLocaleString('ru-RU')}
+                        Каталог: {editCalculatedPrice.toLocaleString('ru-RU')}
                       </span>
                     </label>
                     <input
@@ -525,7 +537,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                       <Calendar className="w-3.5 h-3.5 text-amber-400" />
-                      Target Deadline
+                      Дедлайн сдачи
                     </label>
                     <input
                       type="date"
@@ -536,14 +548,60 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                   </div>
                 </div>
 
+                {/* Deposit / Prepayment Editor */}
+                <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
+                      <CreditCard className="w-3.5 h-3.5 text-emerald-400" />
+                      Внесённый депозит (Предоплата)
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {Number(editDeposit || 0) >= (Number(editFinalPrice || editCalculatedPrice) || 0) && (Number(editFinalPrice || editCalculatedPrice) || 0) > 0 ? (
+                        <span className="text-emerald-400 font-semibold">100% Оплачено</span>
+                      ) : Number(editDeposit || 0) > 0 ? (
+                        <span className="text-amber-400 font-semibold">Частичная оплата</span>
+                      ) : (
+                        <span className="text-slate-500">Не оплачено</span>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <div className="relative">
+                        <input
+                          type="number"
+                          min="0"
+                          value={editDeposit}
+                          onChange={(e) => setEditDeposit(e.target.value)}
+                          placeholder="0"
+                          className="w-full bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-xs text-emerald-400 font-bold focus:border-emerald-500 focus:outline-none pr-12"
+                        />
+                        <span className="absolute right-3 top-2 text-[10px] text-slate-500 font-semibold">сум</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-900/70 border border-slate-800/80 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+                      <span className="text-slate-400">Остаток к доплате:</span>
+                      <span className="font-bold text-amber-400">
+                        {Math.max(
+                          0,
+                          (Number(editFinalPrice || editCalculatedPrice) || 0) - (Number(editDeposit) || 0)
+                        ).toLocaleString('ru-RU')}{' '}
+                        сум
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
                 {/* Comment / Notes */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Comment / Special Request</label>
+                  <label className="block text-xs font-semibold text-slate-300 mb-1">Комментарий / Пожелания к заказу</label>
                   <textarea
                     rows={2}
                     value={editComment}
                     onChange={(e) => setEditComment(e.target.value)}
-                    placeholder="Infill percentage, color preference, notes..."
+                    placeholder="Процент заполнения, цвет, требования..."
                     className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
                   />
                 </div>
@@ -560,7 +618,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     ) : (
                       <Trash2 className="w-3.5 h-3.5" />
                     )}
-                    <span>Cancel Order</span>
+                    <span>Удалить заказ</span>
                   </button>
 
                   <div className="flex items-center space-x-2">
@@ -569,7 +627,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       onClick={() => setIsEditing(false)}
                       className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
                     >
-                      Cancel
+                      Отмена
                     </button>
                     <button
                       type="submit"
@@ -581,7 +639,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       ) : (
                         <Save className="w-3.5 h-3.5" />
                       )}
-                      <span>Save Changes</span>
+                      <span>Сохранить</span>
                     </button>
                   </div>
                 </div>

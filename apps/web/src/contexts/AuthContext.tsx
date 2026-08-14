@@ -30,10 +30,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setErrorMessage(null);
 
     try {
-      // 1. Tell Telegram WebApp we are ready
+      // 1. Tell Telegram WebApp we are ready and expand
       if (window.Telegram?.WebApp) {
         window.Telegram.WebApp.ready();
         window.Telegram.WebApp.expand();
+        if (typeof window.Telegram.WebApp.disableVerticalSwipes === 'function') {
+          window.Telegram.WebApp.disableVerticalSwipes();
+        }
+        if (typeof window.Telegram.WebApp.setHeaderColor === 'function') {
+          window.Telegram.WebApp.setHeaderColor('#0f172a');
+        }
+        if (typeof window.Telegram.WebApp.setBackgroundColor === 'function') {
+          window.Telegram.WebApp.setBackgroundColor('#020617');
+        }
       }
 
       const telegramInitData = window.Telegram?.WebApp?.initData || '';

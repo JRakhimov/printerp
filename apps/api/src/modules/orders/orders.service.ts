@@ -278,6 +278,53 @@ export class OrdersService {
       });
     }
 
+    const resolvedFinalPrice = dto.finalPrice !== undefined
+      ? dto.finalPrice
+      : calculatedPrice !== undefined
+        ? calculatedPrice
+        : existingOrder.finalPrice;
+
+    // Handle depositAmount update if passed
+    let paymentStatus: PaymentStatus | undefined = dto.paymentStatus;
+    if (dto.depositAmount !== undefined) {
+      const newDeposit = dto.depositAmount;
+      const currentPayments = existingOrder.payments || [];
+      const currentTotalPaid = currentPayments.reduce((acc, p) => acc + p.amount, 0);
+
+      if (newDeposit !== currentTotalPaid) {
+        if (newDeposit === 0) {
+          await this.prisma.payment.deleteMany({ where: { orderId: id } });
+        } else if (currentPayments.length === 1) {
+          await this.prisma.payment.update({
+            where: { id: currentPayments[0].id },
+            data: {
+              amount: newDeposit,
+              comment: dto.depositComment || currentPayments[0].comment || 'Deposit payment',
+            },
+          });
+        } else {
+          // Replace or consolidate existing payments into updated deposit
+          await this.prisma.payment.deleteMany({ where: { orderId: id } });
+          await this.prisma.payment.create({
+            data: {
+              orderId: id,
+              amount: newDeposit,
+              comment: dto.depositComment || 'Updated deposit payment',
+              createdById: userId,
+            },
+          });
+        }
+      }
+
+      if (newDeposit >= resolvedFinalPrice && resolvedFinalPrice > 0) {
+        paymentStatus = PaymentStatus.PAID;
+      } else if (newDeposit > 0) {
+        paymentStatus = PaymentStatus.PARTIALLY_PAID;
+      } else {
+        paymentStatus = PaymentStatus.UNPAID;
+      }
+    }
+
     return this.prisma.order.update({
       where: { id },
       data: {
@@ -287,6 +334,7 @@ export class OrdersService {
         calculatedCost: calculatedCost !== undefined ? calculatedCost : undefined,
         calculatedPrice: calculatedPrice !== undefined ? calculatedPrice : undefined,
         finalPrice: dto.finalPrice !== undefined ? dto.finalPrice : calculatedPrice !== undefined ? calculatedPrice : undefined,
+        paymentStatus: paymentStatus !== undefined ? paymentStatus : undefined,
         updatedById: userId,
         items: itemsData ? {
           create: itemsData,

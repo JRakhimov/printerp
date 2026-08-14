@@ -29,8 +29,15 @@ export class ClientsService {
         _count: {
           select: { orders: true },
         },
+        orders: {
+          select: {
+            id: true,
+            finalPrice: true,
+            calculatedPrice: true,
+          },
+        },
       },
-      orderBy: { name: 'asc' },
+      orderBy: { createdAt: 'desc' },
     });
   }
 

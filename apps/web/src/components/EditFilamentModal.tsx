@@ -50,29 +50,29 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
       onClose();
     } catch (err: any) {
       console.error('Failed to update filament:', err);
-      alert(err.response?.data?.message || 'Failed to update filament');
+      alert(err.response?.data?.message || 'Ошибка обновления филамента');
     }
   };
 
   const handleDelete = async () => {
-    if (window.confirm(`Are you sure you want to delete "${filament.brand} ${filament.name}"?`)) {
+    if (window.confirm(`Вы уверены, что хотите удалить "${filament.brand} ${filament.name}"?`)) {
       try {
         await deleteFilament.mutateAsync(filament.id);
         onClose();
       } catch (err: any) {
         console.error('Failed to delete filament:', err);
-        alert(err.response?.data?.message || 'Failed to delete filament');
+        alert(err.response?.data?.message || 'Ошибка удаления филамента');
       }
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <Palette className="w-4 h-4 text-indigo-400" />
-            Edit Filament Spool
+            Редактировать катушку филамента
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -82,20 +82,20 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Brand *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Бренд *</label>
               <input
                 {...register('brand')}
-                placeholder="e.g. Bambu Lab"
+                placeholder="напр. Bambu Lab"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
               />
               {errors.brand && <p className="text-[11px] text-red-400 mt-1">{errors.brand.message}</p>}
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Name / Color Name *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Название / Цвет *</label>
               <input
                 {...register('name')}
-                placeholder="e.g. PLA Basic Black"
+                placeholder="напр. PLA Basic Черный"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
               />
               {errors.name && <p className="text-[11px] text-red-400 mt-1">{errors.name.message}</p>}
@@ -104,7 +104,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Material</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Материал</label>
               <select
                 {...register('material')}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-indigo-500 focus:outline-none"
@@ -114,12 +114,12 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
                 <option value={FilamentMaterial.ABS}>ABS</option>
                 <option value={FilamentMaterial.ASA}>ASA</option>
                 <option value={FilamentMaterial.TPU}>TPU</option>
-                <option value={FilamentMaterial.OTHER}>Other</option>
+                <option value={FilamentMaterial.OTHER}>Другой</option>
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Color Tag (Hex)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Цвет (метка)</label>
               <input
                 {...register('color')}
                 type="color"
@@ -130,7 +130,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
 
           <div className="grid grid-cols-3 gap-2">
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Spool Price (сум) *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Цена катушки (сум) *</label>
               <input
                 {...register('pricePerSpool', { valueAsNumber: true })}
                 type="number"
@@ -141,7 +141,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Weight (g) *</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Вес нетто (г) *</label>
               <input
                 {...register('spoolWeightG', { valueAsNumber: true })}
                 type="number"
@@ -152,7 +152,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
             </div>
 
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Stock (g)</label>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Остаток (г)</label>
               <input
                 {...register('stockG', { valueAsNumber: true })}
                 type="number"
@@ -163,11 +163,11 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
           </div>
 
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Notes</label>
+            <label className="block text-xs font-semibold text-slate-300 mb-1">Заметки</label>
             <textarea
               {...register('notes')}
               rows={2}
-              placeholder="Recommended print temp, nozzle size..."
+              placeholder="Рекомендованная температура, сопло..."
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
             />
           </div>
@@ -184,7 +184,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
               ) : (
                 <Trash2 className="w-3.5 h-3.5" />
               )}
-              <span>Delete</span>
+              <span>Удалить</span>
             </button>
 
             <div className="flex items-center space-x-2">
@@ -193,7 +193,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
                 onClick={onClose}
                 className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
               >
-                Cancel
+                Отмена
               </button>
               <button
                 type="submit"
@@ -201,7 +201,7 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
                 className="px-4 py-2 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-500 text-white flex items-center gap-1.5 transition shadow-md shadow-indigo-500/20"
               >
                 {updateFilament.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-                <span>Save Changes</span>
+                <span>Сохранить</span>
               </button>
             </div>
           </div>

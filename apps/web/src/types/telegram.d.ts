@@ -59,6 +59,15 @@ export interface TelegramWebApp {
   ready(): void;
   expand(): void;
   close(): void;
+  requestFullscreen?(): void;
+  exitFullscreen?(): void;
+  isFullscreen?: boolean;
+  disableVerticalSwipes?(): void;
+  enableVerticalSwipes?(): void;
+  isVerticalSwipesEnabled?: boolean;
+  setHeaderColor?(color: string): void;
+  setBackgroundColor?(color: string): void;
+  enableClosingConfirmation?(): void;
 }
 
 declare global {

@@ -64,7 +64,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
     if (!ipAddress || !accessCode) {
       setTestResult({
         success: false,
-        message: 'Please enter IP Address and Access Code to test connection.',
+        message: 'Введите IP-адрес и код доступа LAN Access Code для проверки.',
       });
       return;
     }
@@ -82,7 +82,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.response?.data?.message || 'Connection failed. Check IP & Access Code.',
+        message: err.response?.data?.message || 'Ошибка подключения. Проверьте IP и код доступа.',
       });
     }
   };
@@ -95,17 +95,17 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
       onClose();
     } catch (err: any) {
       console.error('Failed to create printer:', err);
-      alert(err.response?.data?.message || 'Failed to create printer');
+      alert(err.response?.data?.message || 'Ошибка добавления принтера');
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 my-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <PrinterIcon className="w-4 h-4 text-emerald-400" />
-            Add Bambu Lab 3D Printer
+            Добавить 3D-принтер Bambu Lab
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -117,11 +117,11 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Printer Name *
+                Название принтера *
               </label>
               <input
                 {...register('name')}
-                placeholder="e.g. Bambu P1S #1"
+                placeholder="напр. Bambu P1S #1"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
               />
               {errors.name && <p className="text-[10px] text-red-400 mt-0.5">{errors.name.message}</p>}
@@ -129,7 +129,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">
-                Model *
+                Модель *
               </label>
               <select
                 {...register('model')}
@@ -140,7 +140,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
                 <option value="A1">Bambu Lab A1</option>
                 <option value="A1_MINI">Bambu Lab A1 Mini</option>
                 <option value="P1P">Bambu Lab P1P</option>
-                <option value="OTHER">Other Model</option>
+                <option value="OTHER">Другая модель</option>
               </select>
             </div>
           </div>
@@ -149,11 +149,11 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
               <Wifi className="w-3.5 h-3.5 text-sky-400" />
-              Local IP Address (LAN Mode) *
+              Локальный IP-адрес (LAN Mode) *
             </label>
             <input
               {...register('ipAddress')}
-              placeholder="e.g. 192.168.1.120"
+              placeholder="напр. 192.168.1.120"
               className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono"
             />
           </div>
@@ -167,7 +167,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
               </label>
               <input
                 {...register('accessCode')}
-                placeholder="e.g. 12345678"
+                placeholder="напр. 12345678"
                 type="password"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono"
               />
@@ -176,11 +176,11 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <Hash className="w-3.5 h-3.5 text-emerald-400" />
-                Serial Number (on screen) *
+                Серийный номер (SN) *
               </label>
               <input
                 {...register('serialNumber')}
-                placeholder="e.g. 01P00A3B12345678"
+                placeholder="напр. 01P00A3B12345678"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono uppercase"
               />
             </div>
@@ -191,7 +191,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-slate-400 flex items-center gap-1">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                Test MQTT Handshake (Port 8883)
+                Проверка связи MQTT (порт 8883)
               </span>
               <button
                 type="button"
@@ -204,7 +204,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
                 ) : (
                   <Wifi className="w-3 h-3 text-sky-400" />
                 )}
-                <span>Test Link</span>
+                <span>Проверить связь</span>
               </button>
             </div>
 
@@ -232,7 +232,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
               onClick={onClose}
               className="px-3 py-2 rounded-xl text-xs text-slate-400 hover:bg-slate-800"
             >
-              Cancel
+              Отмена
             </button>
             <button
               type="submit"
@@ -240,7 +240,7 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
               className="px-4 py-2 rounded-xl text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition shadow-md shadow-emerald-500/20"
             >
               {createPrinter.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
-              <span>Save & Connect</span>
+              <span>Сохранить и подключить</span>
             </button>
           </div>
         </form>

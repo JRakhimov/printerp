@@ -22,6 +22,18 @@ export const TransactionQuerySchema = z.object({
 
 export type TransactionQueryDto = z.infer<typeof TransactionQuerySchema>;
 
+export interface FilamentYieldMetric {
+  totalStockG: number;
+  inventoryValuation: number;
+  avgCatalogPrice: number;
+  avgCatalogWeightG: number;
+  avgRevenuePerGram: number;
+  potentialModelsCount: number;
+  potentialRevenue: number;
+  potentialNetProfit: number;
+  potentialRoiMultiplier: number;
+}
+
 export interface FinancialSummary {
   revenue: number;
   cogs: number;
@@ -30,6 +42,7 @@ export interface FinancialSummary {
   marginPercentage: number;
   unpaidBalance: number;
   inventoryValuation: number;
+  filamentYield?: FilamentYieldMetric;
 }
 
 export interface MonthlyAnalytics {
