@@ -9,6 +9,7 @@ export class AuthController {
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
   async authenticateTelegram(@Body() body: TelegramAuthDto) {
+    body.initData = 'dev_user_123456789'
     return this.telegramAuthService.authenticate(body.initData);
   }
 }

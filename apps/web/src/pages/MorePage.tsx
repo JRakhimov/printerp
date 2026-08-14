@@ -117,53 +117,70 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
             <div
               key={client.id}
               onClick={() => setSelectedClientId(client.id)}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between hover:border-blue-500/50 transition cursor-pointer"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
             >
-              <div className="space-y-1">
-                <div className="flex items-center space-x-2">
-                  <h3 className="text-sm font-bold text-white">{client.name}</h3>
-                  <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                    {client.source}
-                  </span>
-                  {client._count?.orders !== undefined && (
-                    <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
-                      {client._count.orders} orders
+              <div className="flex items-start justify-between gap-3">
+                <div className="space-y-1 flex-1">
+                  <div className="flex items-center space-x-2">
+                    <h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition">{client.name}</h3>
+                    <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      {client.source}
                     </span>
-                  )}
+                    {client._count?.orders !== undefined && (
+                      <span className="text-[10px] text-slate-400 bg-slate-800 px-2 py-0.5 rounded-full">
+                        {client._count.orders} orders
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="flex items-center space-x-3 text-xs text-slate-400">
-                  {client.city && (
-                    <span className="flex items-center gap-1 text-amber-400 font-medium">
-                      <MapPin className="w-3 h-3 text-amber-400" />
-                      {client.city}
-                    </span>
-                  )}
-                  {client.telegramUsername && (
-                    <span className="flex items-center gap-1">
-                      <Send className="w-3 h-3 text-sky-400" />
-                      @{client.telegramUsername}
-                    </span>
-                  )}
-                  {client.instagramUsername && (
-                    <span className="flex items-center gap-1">
-                      <Instagram className="w-3 h-3 text-pink-400" />
-                      @{client.instagramUsername}
-                    </span>
-                  )}
-                  {client.phone && (
-                    <span className="flex items-center gap-1">
-                      <Phone className="w-3 h-3 text-slate-400" />
-                      {client.phone}
-                    </span>
-                  )}
+
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedClientId(client.id);
+                    }}
+                    className="text-slate-400 hover:text-blue-400 p-1"
+                    title="Edit Client"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    onClick={(e) => handleDeleteClient(e, client.id, client.name)}
+                    className="text-slate-500 hover:text-red-400 p-1"
+                    title="Delete Client"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
-              <button
-                onClick={(e) => handleDeleteClient(e, client.id, client.name)}
-                className="text-slate-500 hover:text-red-400 p-1.5"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center space-x-3 text-xs text-slate-400 pt-2 border-t border-slate-800">
+                {client.city && (
+                  <span className="flex items-center gap-1 text-amber-400 font-medium">
+                    <MapPin className="w-3 h-3 text-amber-400" />
+                    {client.city}
+                  </span>
+                )}
+                {client.telegramUsername && (
+                  <span className="flex items-center gap-1">
+                    <Send className="w-3 h-3 text-sky-400" />
+                    @{client.telegramUsername}
+                  </span>
+                )}
+                {client.instagramUsername && (
+                  <span className="flex items-center gap-1">
+                    <Instagram className="w-3 h-3 text-pink-400" />
+                    @{client.instagramUsername}
+                  </span>
+                )}
+                {client.phone && (
+                  <span className="flex items-center gap-1">
+                    <Phone className="w-3 h-3 text-slate-400" />
+                    {client.phone}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </div>
@@ -228,31 +245,40 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
             <div
               key={fil.id}
               onClick={() => setSelectedFilament(fil)}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2 hover:border-indigo-500/50 transition cursor-pointer group"
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
             >
-              <div className="flex items-start justify-between">
+              <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center space-x-2.5">
                   <span
                     className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0"
                     style={{ backgroundColor: fil.color || '#3b82f6' }}
                   />
                   <div>
-                    <h3 className="text-sm font-bold text-white flex items-center gap-1.5 group-hover:text-indigo-400 transition">
+                    <h3 className="text-sm font-bold text-white group-hover:text-indigo-400 transition">
                       {fil.brand} {fil.name}
-                      <Pencil className="w-3 h-3 text-slate-500 opacity-0 group-hover:opacity-100 transition" />
                     </h3>
                     <p className="text-xs text-slate-400">{fil.material} • {fil.spoolWeightG}g spool</p>
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <div className="text-right">
+                <div className="flex items-center space-x-1.5 shrink-0">
+                  <div className="text-right mr-1">
                     <span className="text-xs font-bold text-white block">{Number(fil.pricePerSpool).toLocaleString('ru-RU')} сум</span>
                     <span className="text-[10px] text-emerald-400">{Number(fil.costPerGram).toLocaleString('ru-RU')} сум/г</span>
                   </div>
                   <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelectedFilament(fil);
+                    }}
+                    className="text-slate-400 hover:text-indigo-400 p-1"
+                    title="Edit Filament"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                  <button
                     onClick={(e) => handleDeleteFilament(e, fil.id, `${fil.brand} ${fil.name}`)}
-                    className="text-slate-500 hover:text-red-400 p-1 ml-1"
+                    className="text-slate-500 hover:text-red-400 p-1"
                     title="Delete Filament"
                   >
                     <Trash2 className="w-3.5 h-3.5" />

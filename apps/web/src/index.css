@@ -41,3 +41,7 @@ body {
 .backdrop-blur-sm {
   margin-top: 0 !important;
 }
+
+.calendar-width {
+  width: 92%;
+}

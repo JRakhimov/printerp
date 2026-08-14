@@ -17,7 +17,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const [clientId, setClientId] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
   const [comment, setComment] = useState<string>('');
-  const [items, setItems] = useState<{ projectId: string; quantity: number }[]>([]);
+  const [items, setItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
   const [customFinalPrice, setCustomFinalPrice] = useState<string>('');
   const [initialPaymentAmount, setInitialPaymentAmount] = useState<string>('');
   const [initialPaymentComment, setInitialPaymentComment] = useState<string>('Deposit paid');
@@ -39,7 +39,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const updateItemRow = (index: number, field: 'projectId' | 'quantity', value: string | number) => {
     const updated = [...items];
     if (field === 'projectId') updated[index].projectId = value as string;
-    if (field === 'quantity') updated[index].quantity = Math.max(1, Number(value) || 1);
+    if (field === 'quantity') {
+      updated[index].quantity = value === '' ? '' : isNaN(Number(value)) ? '' : Number(value);
+    }
     setItems(updated);
   };
 
@@ -50,8 +52,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   for (const item of items) {
     const proj = projectMap.get(item.projectId);
     if (proj) {
-      calculatedCost += proj.defaultCost * item.quantity;
-      calculatedPrice += proj.defaultPrice * item.quantity;
+      const qty = Number(item.quantity) || 1;
+      calculatedCost += proj.defaultCost * qty;
+      calculatedPrice += proj.defaultPrice * qty;
     }
   }
 
@@ -75,7 +78,10 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
         clientId,
         deadline: deadline ? new Date(deadline).toISOString() : null,
         comment: comment || null,
-        items,
+        items: items.map((i) => ({
+          projectId: i.projectId,
+          quantity: Math.max(1, Number(i.quantity) || 1),
+        })),
         finalPrice: customFinalPrice !== '' ? Number(customFinalPrice) : undefined,
         initialPaymentAmount: initialPaymentAmount ? Number(initialPaymentAmount) : undefined,
         initialPaymentComment: initialPaymentComment || undefined,
@@ -241,7 +247,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                 type="date"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
+                className="calendar-width bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
               />
             </div>
 

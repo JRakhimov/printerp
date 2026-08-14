@@ -2,18 +2,29 @@ import React, { useState } from 'react';
 import { useOrders, OrderStatus, PaymentStatus } from '../hooks/useOrders';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
-import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle, Pencil } from 'lucide-react';
 
 export const OrdersPage: React.FC = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<OrderStatus | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [orderModalMode, setOrderModalMode] = useState<'view' | 'edit'>('view');
 
   const { data: orders, isLoading } = useOrders({
     status: statusFilter,
     search: search || undefined,
   });
+
+  const handleOpenDetail = (id: string, mode: 'view' | 'edit' = 'view') => {
+    setSelectedOrderId(id);
+    setOrderModalMode(mode);
+  };
+
+  const handleEdit = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    handleOpenDetail(id, 'edit');
+  };
 
   const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
@@ -118,33 +129,43 @@ export const OrdersPage: React.FC = () => {
       {/* Orders List */}
       <div className="space-y-3">
         {orders?.map((order) => {
-          const totalPaid = order.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
           return (
             <div
               key={order.id}
-              onClick={() => setSelectedOrderId(order.id)}
-              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer"
+              onClick={() => handleOpenDetail(order.id, 'view')}
+              className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm hover:border-slate-700 transition cursor-pointer group"
             >
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center space-x-2">
                     <span className="text-xs font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
-                    <h3 className="text-sm font-bold text-white">{order.client?.name}</h3>
+                    <h3 className="text-sm font-bold text-white group-hover:text-emerald-400 transition">{order.client?.name}</h3>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">
                     {order.items?.map((i) => `${i.projectNameSnapshot} (${i.quantity}x)`).join(', ')}
                   </p>
                 </div>
 
-                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl border ${getStatusBadge(order.status)}`}>
-                  {order.status}
-                </span>
+                <div className="flex items-center space-x-2">
+                  <span className={`text-[10px] font-bold px-2.5 py-1 rounded-xl border ${getStatusBadge(order.status)}`}>
+                    {order.status}
+                  </span>
+                  <button
+                    onClick={(e) => handleEdit(e, order.id)}
+                    className="text-slate-400 hover:text-emerald-400 p-1"
+                    title="Edit Order"
+                  >
+                    <Pencil className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
 
               {/* Order Footer summary */}
               <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-slate-800">
                 <div className="flex items-center space-x-3 text-[11px]">
-                  <span className="font-bold text-white">{order.finalPrice.toLocaleString('ru-RU')} сум</span>
+                  <span className="font-bold text-white">
+                    {Number(order.finalPrice ?? order.calculatedPrice ?? 0).toLocaleString('ru-RU')} сум
+                  </span>
                   <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
                     order.paymentStatus === PaymentStatus.PAID ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
                     order.paymentStatus === PaymentStatus.PARTIALLY_PAID ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'
@@ -166,7 +187,11 @@ export const OrdersPage: React.FC = () => {
       </div>
 
       <CreateOrderModal isOpen={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
-      <OrderDetailModal orderId={selectedOrderId} onClose={() => setSelectedOrderId(null)} />
+      <OrderDetailModal
+        orderId={selectedOrderId}
+        initialMode={orderModalMode}
+        onClose={() => setSelectedOrderId(null)}
+      />
     </div>
   );
 };
