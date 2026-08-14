@@ -7,4 +7,5 @@ export * from './dto/order.dto.js';
 export * from './dto/finance.dto.js';
 export * from './dto/settings.dto.js';
 export * from './dto/user.dto.js';
+export * from './dto/printer.dto.js';
 export * from './types/index.js';

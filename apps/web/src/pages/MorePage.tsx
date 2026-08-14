@@ -8,6 +8,7 @@ import { ClientDetailModal } from '../components/ClientDetailModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import { FinancePage } from './FinancePage';
 import { SettingsPage } from './SettingsPage';
+import { PrintersPage } from './PrintersPage';
 import { Filament } from '../hooks/useFilaments';
 import {
   Users,
@@ -27,7 +28,7 @@ import {
   Pencil,
 } from 'lucide-react';
 
-type SubView = 'menu' | 'clients' | 'filaments' | 'finance' | 'settings';
+type SubView = 'menu' | 'clients' | 'filaments' | 'finance' | 'settings' | 'printers';
 
 interface MorePageProps {
   resetSignal?: number;
@@ -336,11 +337,27 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
     );
   }
 
+  if (activeView === 'printers') {
+    return (
+      <div className="space-y-4 pb-20">
+        <button
+          onClick={() => setActiveView('menu')}
+          className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Back to Menu</span>
+        </button>
+        <PrintersPage />
+      </div>
+    );
+  }
+
   // Main menu list
   const menuSections = [
+    { id: 'printers', title: 'Printer Fleet', icon: Printer, description: 'Bambu Lab live telemetry & status', color: 'text-emerald-400' },
     { id: 'clients', title: 'Clients Directory', icon: Users, description: 'Manage clients and contact info', color: 'text-blue-400' },
     { id: 'filaments', title: 'Filament Stock', icon: Palette, description: 'Spools, brands, materials & cost per gram', color: 'text-indigo-400' },
-    { id: 'finance', title: 'Finance & Expenses', icon: DollarSign, description: 'Cash flow, payments & expenses', color: 'text-emerald-400' },
+    { id: 'finance', title: 'Finance & Expenses', icon: DollarSign, description: 'Cash flow, payments & expenses', color: 'text-teal-400' },
     { id: 'settings', title: 'System Settings', icon: Settings, description: 'Users, allowlist & system configs', color: 'text-amber-400' },
   ];
 
@@ -354,6 +371,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
             <div
               key={item.id}
               onClick={() => {
+                if (item.id === 'printers') setActiveView('printers');
                 if (item.id === 'clients') setActiveView('clients');
                 if (item.id === 'filaments') setActiveView('filaments');
                 if (item.id === 'finance') setActiveView('finance');

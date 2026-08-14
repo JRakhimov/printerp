@@ -108,7 +108,7 @@ describe('TelegramAuthService', () => {
     it('should issue JWT token for user in allowlist', async () => {
       const validInitData = createValidInitData(ALLOWED_TELEGRAM_ID);
 
-      prismaService.user.findUnique.mockResolvedValue({
+      const mockUser = {
         id: 'user-uuid-1',
         telegramId: BigInt(ALLOWED_TELEGRAM_ID),
         telegramUsername: 'testuser',
@@ -116,9 +116,10 @@ describe('TelegramAuthService', () => {
         lastName: 'User',
         role: Role.OWNER,
         isActive: true,
-      });
+      };
 
-      prismaService.user.update.mockResolvedValue({});
+      prismaService.user.findUnique.mockResolvedValue(mockUser);
+      prismaService.user.update.mockResolvedValue(mockUser);
 
       const result = await service.authenticate(validInitData);
 

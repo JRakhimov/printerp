@@ -1,6 +1,7 @@
 import React from 'react';
 import { useOrders, OrderStatus } from '../hooks/useOrders';
 import { useFinancialSummary } from '../hooks/useFinance';
+import { usePrinters } from '../hooks/usePrinters';
 import {
   Package,
   Printer,
@@ -11,11 +12,15 @@ import {
   DollarSign,
   Layers,
   CalendarPlus,
+  Flame,
+  Zap,
+  FileCode,
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const { data: orders } = useOrders();
   const { data: summary } = useFinancialSummary();
+  const { data: printers } = usePrinters();
 
   // Active orders count & printing status count
   const activeOrders = orders?.filter((o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED) || [];
@@ -130,6 +135,110 @@ export const HomePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Bambu Lab Fleet Live Status */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-sm font-bold text-white flex items-center gap-2">
+            <Printer className="w-4 h-4 text-emerald-400" />
+            Bambu Lab Fleet
+          </h2>
+          <span className="text-[11px] text-slate-400 font-medium">
+            {printers?.filter((p) => p.lastStatus === 'RUNNING' || p.lastStatus === 'PRINTING').length || 0} printing / {printers?.length || 0} total
+          </span>
+        </div>
+
+        {printers && printers.length > 0 ? (
+          <div className="space-y-2.5">
+            {printers.map((printer) => {
+              const isPrinting = printer.lastStatus === 'RUNNING' || printer.lastStatus === 'PRINTING';
+              const isPaused = printer.lastStatus === 'PAUSED';
+              const progress = printer.printProgress ?? 0;
+              const remainingMins = printer.remainingMinutes ?? 0;
+              const hours = Math.floor(remainingMins / 60);
+              const mins = remainingMins % 60;
+              const timeString = hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
+
+              return (
+                <div
+                  key={printer.id}
+                  className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 space-y-2 hover:border-slate-700 transition"
+                >
+                  <div className="flex items-center justify-between text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-white">{printer.name}</span>
+                      <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono">
+                        {printer.model}
+                      </span>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                        isPrinting
+                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                          : isPaused
+                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                          : 'bg-slate-800 text-slate-400 border-slate-700'
+                      }`}
+                    >
+                      <span
+                        className={`w-1.5 h-1.5 rounded-full ${
+                          isPrinting ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
+                        }`}
+                      />
+                      {printer.lastStatus || 'IDLE'}
+                    </span>
+                  </div>
+
+                  {isPrinting && (
+                    <div className="space-y-1">
+                      <div className="flex items-center justify-between text-[11px] text-slate-300">
+                        <span className="truncate max-w-[180px] flex items-center gap-1">
+                          <FileCode className="w-3 h-3 text-emerald-400 shrink-0" />
+                          <span className="truncate">{printer.currentFile || 'Printing...'}</span>
+                        </span>
+                        <span className="font-bold text-emerald-400">{progress}%</span>
+                      </div>
+                      <div className="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-emerald-500 h-full rounded-full transition-all duration-500"
+                          style={{ width: `${Math.min(100, Math.max(0, progress))}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between text-[11px] text-slate-400 pt-0.5">
+                    <div className="flex items-center space-x-3">
+                      <span className="flex items-center gap-1">
+                        <Flame className="w-3 h-3 text-rose-400" />
+                        {printer.nozzleTemp !== null && printer.nozzleTemp !== undefined
+                          ? `${Math.round(printer.nozzleTemp)}°C`
+                          : '—'}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Zap className="w-3 h-3 text-amber-400" />
+                        {printer.bedTemp !== null && printer.bedTemp !== undefined
+                          ? `${Math.round(printer.bedTemp)}°C`
+                          : '—'}
+                      </span>
+                    </div>
+
+                    {isPrinting && remainingMins > 0 && (
+                      <span className="flex items-center gap-1 text-sky-400 font-medium">
+                        <Clock className="w-3 h-3" />
+                        {timeString} left
+                      </span>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <p className="text-xs text-slate-500 italic">No Bambu Lab printers connected yet.</p>
+        )}
+      </div>
 
       {/* Deadlines Overview */}
       <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4">

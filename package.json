@@ -22,5 +22,8 @@
     "prisma": "^5.19.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
+  },
+  "dependencies": {
+    "mqtt": "^5.15.2"
   }
 }

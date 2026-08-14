@@ -3,9 +3,12 @@ import { OrdersService } from '../src/modules/orders/orders.service';
 import { PrismaService } from '../src/database/prisma.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
+import { TelegramBotService } from '../src/modules/telegram-bot/telegram-bot.service';
+
 describe('OrdersService', () => {
   let service: OrdersService;
   let prismaMock: any;
+  let telegramBotMock: any;
 
   beforeEach(async () => {
     prismaMock = {
@@ -23,10 +26,16 @@ describe('OrdersService', () => {
       },
     };
 
+    telegramBotMock = {
+      notifyNewOrder: jest.fn(),
+      notifyStatusChange: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
         { provide: PrismaService, useValue: prismaMock },
+        { provide: TelegramBotService, useValue: telegramBotMock },
       ],
     }).compile();
 

@@ -269,19 +269,26 @@ model Transaction {
 }
 
 model Printer {
-  id              String                 @id @default(uuid()) @db.Uuid
-  name            String
-  manufacturer    PrinterManufacturer    @default(OTHER)
-  model           String
-  serialNumber    String?                @map("serial_number")
-  integrationType PrinterIntegrationType @default(MANUAL) @map("integration_type")
-  externalId      String?                @map("external_id")
-  isActive        Boolean                @default(true) @map("is_active")
-  lastStatus      String?                @map("last_status")
-  lastSeenAt      DateTime?              @map("last_seen_at")
-  metadata        Json?
-  createdAt       DateTime               @default(now()) @map("created_at")
-  updatedAt       DateTime               @updatedAt @map("updated_at")
+  id               String                 @id @default(uuid()) @db.Uuid
+  name             String
+  manufacturer     PrinterManufacturer    @default(BAMBU_LAB)
+  model            String
+  serialNumber     String?                @map("serial_number")
+  ipAddress        String?                @map("ip_address")
+  accessCode       String?                @map("access_code")
+  integrationType  PrinterIntegrationType @default(BAMBUDDY) @map("integration_type")
+  externalId       String?                @map("external_id")
+  isActive         Boolean                @default(true) @map("is_active")
+  lastStatus       String?                @map("last_status")
+  lastSeenAt       DateTime?              @map("last_seen_at")
+  nozzleTemp       Float?                 @map("nozzle_temp")
+  bedTemp          Float?                 @map("bed_temp")
+  printProgress    Int?                   @map("print_progress")
+  remainingMinutes Int?                   @map("remaining_minutes")
+  currentFile      String?                @map("current_file")
+  metadata         Json?
+  createdAt        DateTime               @default(now()) @map("created_at")
+  updatedAt        DateTime               @updatedAt @map("updated_at")
 
   printJobs PrintJob[]
 

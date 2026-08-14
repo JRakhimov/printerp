@@ -30,7 +30,7 @@ services:
     container_name: printerp_api
     restart: unless-stopped
     environment:
-      DATABASE_URL: ${DATABASE_URL:-postgresql://${POSTGRES_USER:-printerp}:${POSTGRES_PASSWORD:-printerp_secret}@postgres:5432/${POSTGRES_DB:-printerp_db}?schema=public}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-printerp}:${POSTGRES_PASSWORD:-printerp_secret}@postgres:5432/${POSTGRES_DB:-printerp_db}?schema=public
       PORT: ${PORT:-3011}
       NODE_ENV: ${NODE_ENV:-development}
       DEV_BYPASS_AUTH: ${DEV_BYPASS_AUTH:-true}
