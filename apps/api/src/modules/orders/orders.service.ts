@@ -121,8 +121,8 @@ export class OrdersService {
       },
     });
 
-    // Notify all other team members via Telegram Bot
-    this.telegramBotService.notifyNewOrder(createdOrder, userId);
+    // Notify all other team members via Telegram Bot (excluding creator)
+    this.telegramBotService.notifyNewOrder(createdOrder, createdOrder.createdById || userId);
 
     return createdOrder;
   }

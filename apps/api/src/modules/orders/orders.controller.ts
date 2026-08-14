@@ -12,7 +12,7 @@ export class OrdersController {
 
   @Post()
   create(@CurrentUser() user: any, @Body() createOrderDto: CreateOrderDto) {
-    return this.ordersService.create(user.userId, createOrderDto);
+    return this.ordersService.create(user.id, createOrderDto);
   }
 
   @Get()
@@ -34,7 +34,7 @@ export class OrdersController {
     @CurrentUser() user: any,
     @Body() changeStatusDto: ChangeOrderStatusDto,
   ) {
-    return this.ordersService.updateStatus(id, user.userId, changeStatusDto);
+    return this.ordersService.updateStatus(id, user.id, changeStatusDto);
   }
 
   @Patch(':id')
@@ -43,7 +43,7 @@ export class OrdersController {
     @CurrentUser() user: any,
     @Body() updateOrderDto: UpdateOrderDto,
   ) {
-    return this.ordersService.update(id, user.userId, updateOrderDto);
+    return this.ordersService.update(id, user.id, updateOrderDto);
   }
 
   @Delete(':id')

@@ -118,11 +118,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               required
             >
               <option value="">Select a client...</option>
-              {(clients || []).map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name} ({c.source})
-                </option>
-              ))}
+              {(clients || []).map((c) => {
+                const info = c.instagramUsername || c.telegramUsername || c.notes || c.city || c.phone || c.source;
+                return (
+                  <option key={c.id} value={c.id}>
+                    {c.name} {info ? `(${info})` : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -153,7 +156,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                       <select
                         value={row.projectId}
                         onChange={(e) => updateItemRow(idx, 'projectId', e.target.value)}
-                        className="flex-1 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white"
+                        className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white truncate focus:border-emerald-500 focus:outline-none"
                       >
                         {(projects || []).map((p) => (
                           <option key={p.id} value={p.id}>
@@ -162,21 +165,22 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
                         ))}
                       </select>
 
-                      <div className="w-20 flex items-center">
-                        <span className="text-[11px] text-slate-400 mr-1.5">Qty:</span>
+                      <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
+                        <span className="text-[11px] text-slate-400 mr-1 shrink-0">Qty:</span>
                         <input
                           type="number"
                           min="1"
                           value={row.quantity}
                           onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
-                          className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5 text-xs text-white text-center"
+                          className="w-full min-w-0 bg-transparent text-xs text-white text-center font-bold focus:outline-none"
                         />
                       </div>
 
                       <button
                         type="button"
                         onClick={() => removeItemRow(idx)}
-                        className="text-slate-500 hover:text-red-400 p-1"
+                        className="text-slate-500 hover:text-red-400 p-1 shrink-0"
+                        title="Remove item"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -200,7 +204,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
               </div>
             </div>
 
-            <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-3">
+            <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-[11px] font-semibold text-slate-300 mb-1">
                   Final Agreed Price (сум)
@@ -227,7 +231,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
           </div>
 
           {/* Deadline & Deposit */}
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <Calendar className="w-3.5 h-3.5 text-amber-400" />
