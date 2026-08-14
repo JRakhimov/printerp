@@ -3,7 +3,7 @@ import { useOrders, OrderStatus, PaymentStatus } from '../hooks/useOrders';
 import { getClientDisplayName } from '@printerp/shared';
 import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
-import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle, Pencil } from 'lucide-react';
+import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle, Pencil, Zap } from 'lucide-react';
 
 export const OrdersPage: React.FC = () => {
   const [search, setSearch] = useState('');
@@ -207,12 +207,21 @@ export const OrdersPage: React.FC = () => {
                   </span>
                 </div>
 
-                {order.deadline && (
-                  <span className="flex items-center gap-1 text-[11px] text-amber-400">
-                    <Calendar className="w-3 h-3" />
-                    {new Date(order.deadline).toLocaleDateString()}
-                  </span>
-                )}
+                <div className="text-right space-y-0.5">
+                  {order.deadline && (
+                    <span className="flex items-center justify-end gap-1 text-[11px] text-amber-400 font-medium">
+                      <Zap className="w-3 h-3 text-amber-400 fill-amber-400/20" />
+                      {new Date(order.deadline).toLocaleDateString('ru-RU')}
+                    </span>
+                  )}
+                  {order.createdAt && (
+                    <span className="flex items-center justify-end gap-1 text-[10px] text-slate-400 font-medium">
+                      <Calendar className="w-3 h-3 text-slate-500" />
+                      {new Date(order.createdAt).toLocaleDateString('ru-RU')}{' '}
+                      {new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
           );

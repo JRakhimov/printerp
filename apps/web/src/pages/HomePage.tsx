@@ -216,9 +216,6 @@ export const HomePage: React.FC = () => {
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
                       <span className="font-bold text-white">{printer.name}</span>
-                      <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded font-mono">
-                        {printer.model}
-                      </span>
                     </div>
 
                     <span
