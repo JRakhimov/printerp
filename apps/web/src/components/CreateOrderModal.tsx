@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useClients } from '../hooks/useClients';
+import { useClients, useCreateClient } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
 import { useCreateOrder } from '../hooks/useOrders';
-import { getClientDisplayName } from '@printerp/shared';
+import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
-import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard } from 'lucide-react';
+import { CityInput } from './CityInput';
+import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard, UserPlus } from 'lucide-react';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
   const createOrder = useCreateOrder();
+  const createClient = useCreateClient();
 
   const [clientId, setClientId] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
@@ -24,6 +26,11 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const [initialPaymentAmount, setInitialPaymentAmount] = useState<string>('');
   const [isDepositManuallyEdited, setIsDepositManuallyEdited] = useState<boolean>(false);
   const [initialPaymentComment, setInitialPaymentComment] = useState<string>('Full prepayment paid');
+
+  // Quick Client Creation state (2 fields: Instagram & City)
+  const [isQuickCreatingClient, setIsQuickCreatingClient] = useState(false);
+  const [quickInstagram, setQuickInstagram] = useState('');
+  const [quickCity, setQuickCity] = useState('Ташкент');
 
   const projectMap = new Map((projects || []).map((p) => [p.id, p]));
 
@@ -57,6 +64,29 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
 
   if (!isOpen) return null;
 
+  const handleCreateQuickClient = async () => {
+    if (!quickInstagram.trim()) {
+      alert('Пожалуйста, укажите Instagram username');
+      return;
+    }
+
+    try {
+      const newClient = await createClient.mutateAsync({
+        instagramUsername: quickInstagram.trim(),
+        city: quickCity.trim() || null,
+        source: ClientSource.INSTAGRAM,
+      });
+
+      setClientId(newClient.id);
+      setIsQuickCreatingClient(false);
+      setQuickInstagram('');
+      setQuickCity('Ташкент');
+    } catch (err: any) {
+      console.error('Failed to create quick client:', err);
+      alert(err?.response?.data?.message || 'Ошибка при создании клиента');
+    }
+  };
+
   const addItemRow = () => {
     if (projects && projects.length > 0) {
       setItems([...items, { projectId: projects[0].id, quantity: 1 }]);
@@ -79,11 +109,11 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!clientId) {
-      alert('Please select a client');
+      alert('Пожалуйста, выберите клиента');
       return;
     }
     if (items.length === 0) {
-      alert('Please add at least one model item to the order');
+      alert('Пожалуйста, добавьте хотя бы одну модель в заказ');
       return;
     }
 
@@ -113,6 +143,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
       setCustomFinalPrice('');
       setInitialPaymentAmount('');
       setIsDepositManuallyEdited(false);
+      setIsQuickCreatingClient(false);
+      setQuickInstagram('');
+      setQuickCity('Ташкент');
       onClose();
     } catch (err) {
       console.error('Failed to create order:', err);
@@ -133,15 +166,90 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-3">
-          {/* Client Selection (Searchable with suggestions) */}
+          {/* Client Selection / Quick Client Creation */}
           <div>
-            <label className="block text-xs font-semibold text-slate-300 mb-1">Клиент *</label>
-            <ClientSelect
-              value={clientId}
-              onChange={setClientId}
-              placeholder="Поиск по @instagram, имени, городу или телефону..."
-              required
-            />
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-semibold text-slate-300">Клиент *</label>
+              <button
+                type="button"
+                onClick={() => setIsQuickCreatingClient(!isQuickCreatingClient)}
+                className="text-[11px] text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition"
+              >
+                {isQuickCreatingClient ? (
+                  <span>← Выбрать существующего</span>
+                ) : (
+                  <>
+                    <UserPlus className="w-3.5 h-3.5" />
+                    <span>+ Новый клиент</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {isQuickCreatingClient ? (
+              <div className="bg-slate-950/70 border border-blue-500/30 rounded-xl p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-blue-400 flex items-center gap-1.5">
+                    <UserPlus className="w-3.5 h-3.5 text-blue-400" />
+                    Быстрое создание клиента
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Instagram *
+                    </label>
+                    <input
+                      type="text"
+                      value={quickInstagram}
+                      onChange={(e) => setQuickInstagram(e.target.value)}
+                      placeholder="@username"
+                      className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                      Город / Область
+                    </label>
+                    <CityInput
+                      id="quick-client-city"
+                      value={quickCity}
+                      onChange={setQuickCity}
+                      placeholder="напр. Ташкент"
+                      className="py-1.5"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setIsQuickCreatingClient(false)}
+                    className="px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:bg-slate-800 transition"
+                  >
+                    Отмена
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCreateQuickClient}
+                    disabled={createClient.isPending || !quickInstagram.trim()}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                  >
+                    {createClient.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                    <span>Сохранить и выбрать</span>
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <ClientSelect
+                value={clientId}
+                onChange={setClientId}
+                placeholder="Поиск по @instagram, имени, городу или телефону..."
+                required
+              />
+            )}
           </div>
 
           {/* Items Section */}

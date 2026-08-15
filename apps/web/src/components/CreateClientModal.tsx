@@ -1,8 +1,8 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateClientSchema, CreateClientDto, ClientSource } from '@printerp/shared';
 import { useCreateClient } from '../hooks/useClients';
+import { CityInput } from './CityInput';
 import { X, UserPlus, Loader2 } from 'lucide-react';
 
 interface CreateClientModalProps {
@@ -16,6 +16,7 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({ isOpen, on
   const {
     register,
     handleSubmit,
+    control,
     reset,
     formState: { errors },
   } = useForm<CreateClientDto>({
@@ -63,11 +64,18 @@ export const CreateClientModal: React.FC<CreateClientModalProps> = ({ isOpen, on
               />
             </div>
             <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1">Город</label>
-              <input
-                {...register('city')}
-                placeholder="напр. Ташкент"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+              <label className="block text-xs font-semibold text-slate-300 mb-1">Город / Область</label>
+              <Controller
+                control={control}
+                name="city"
+                render={({ field }) => (
+                  <CityInput
+                    id="create-client-city"
+                    value={field.value || ''}
+                    onChange={field.onChange}
+                    placeholder="напр. Ташкент"
+                  />
+                )}
               />
             </div>
           </div>

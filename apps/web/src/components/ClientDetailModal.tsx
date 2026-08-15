@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useClient, useUpdateClient, useDeleteClient } from '../hooks/useClients';
 import { getClientDisplayName, ClientSource } from '@printerp/shared';
+import { CityInput } from './CityInput';
 import {
   X,
   User,
@@ -255,13 +256,13 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                 </div>
 
                 <div>
-                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Город</label>
-                  <input
-                    type="text"
+                  <label className="block text-[11px] font-semibold text-slate-300 mb-1">Город / Область</label>
+                  <CityInput
+                    id="edit-client-city"
                     value={city}
-                    onChange={(e) => setCity(e.target.value)}
+                    onChange={setCity}
                     placeholder="напр. Ташкент"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    className="py-1.5"
                   />
                 </div>
               </div>

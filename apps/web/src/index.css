@@ -17,6 +17,7 @@ body {
   color: var(--tg-theme-text-color, #f8fafc);
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 /* Custom scrollbars */
@@ -64,3 +65,169 @@ select option {
   color: #f8fafc;
 }
 
+/* Hide default browser datalist arrow indicator */
+input::-webkit-calendar-picker-indicator {
+  display: none !important;
+  opacity: 0 !important;
+  -webkit-appearance: none !important;
+}
+
+/* ==========================================================
+   LIGHT MODE OVERRIDES SYSTEM
+   ========================================================== */
+html.light {
+  --tg-theme-bg-color: #f8fafc;
+  --tg-theme-secondary-bg-color: #ffffff;
+  --tg-theme-text-color: #0f172a;
+  --tg-theme-hint-color: #64748b;
+  color-scheme: light;
+}
+
+html.light body {
+  background-color: #f8fafc;
+  color: #0f172a;
+}
+
+/* Main Backgrounds in Light Mode */
+html.light .bg-slate-950,
+html.light [class*="bg-slate-950"] {
+  background-color: #f1f5f9 !important;
+}
+
+html.light .bg-slate-900,
+html.light [class*="bg-slate-900"] {
+  background-color: #ffffff !important;
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.05), 0 1px 2px -1px rgba(0, 0, 0, 0.05);
+}
+
+html.light .bg-slate-800,
+html.light [class*="bg-slate-800"] {
+  background-color: #e2e8f0 !important;
+}
+
+/* Colored Metric Badges in Light Mode */
+html.light .bg-emerald-950\/40 {
+  background-color: #ecfdf5 !important;
+  border-color: #a7f3d0 !important;
+}
+
+html.light .bg-sky-950\/40 {
+  background-color: #f0f9ff !important;
+  border-color: #bae6fd !important;
+}
+
+html.light .bg-amber-950\/40 {
+  background-color: #fffbeb !important;
+  border-color: #fde68a !important;
+}
+
+/* Borders */
+html.light .border-slate-800,
+html.light [class*="border-slate-800"] {
+  border-color: #e2e8f0 !important;
+}
+
+html.light .border-slate-700,
+html.light [class*="border-slate-700"] {
+  border-color: #cbd5e1 !important;
+}
+
+/* General Text Colors */
+html.light .text-white {
+  color: #0f172a !important;
+}
+
+html.light .text-slate-200 {
+  color: #1e293b !important;
+}
+
+html.light .text-slate-300 {
+  color: #334155 !important;
+}
+
+html.light .text-slate-400 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-500 {
+  color: #64748b !important;
+}
+
+html.light .text-slate-600 {
+  color: #94a3b8 !important;
+}
+
+/* Colored Action Buttons, Gradients & Active Filter Tabs MUST keep white text */
+html.light .bg-emerald-600,
+html.light .bg-emerald-500,
+html.light .bg-blue-600,
+html.light .bg-blue-500,
+html.light .bg-indigo-600,
+html.light .bg-amber-600,
+html.light .bg-sky-600,
+html.light .bg-rose-600,
+html.light [class*="bg-gradient-"],
+html.light .bg-emerald-600 *,
+html.light .bg-emerald-500 *,
+html.light .bg-blue-600 *,
+html.light .bg-blue-500 *,
+html.light .bg-indigo-600 *,
+html.light .bg-amber-600 *,
+html.light .bg-sky-600 *,
+html.light .bg-rose-600 *,
+html.light [class*="bg-gradient-"] * {
+  color: #ffffff !important;
+}
+
+/* Progress bar fill stays bright emerald */
+html.light .bg-emerald-500 {
+  background-color: #10b981 !important;
+}
+
+/* Inactive Filter Tabs & Buttons in Light Mode */
+html.light .bg-slate-900.border-slate-800.text-slate-400 {
+  background-color: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  color: #475569 !important;
+}
+
+html.light .bg-slate-900.border-slate-800.text-slate-400:hover {
+  background-color: #e2e8f0 !important;
+  color: #0f172a !important;
+}
+
+/* Inputs, Textareas & Select Controls in Light Mode */
+html.light input,
+html.light select,
+html.light textarea {
+  background-color: #ffffff !important;
+  border-color: #cbd5e1 !important;
+  color: #0f172a !important;
+}
+
+html.light select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke-width='2' stroke='%23475569'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19.5 8.25l-7.5 7.5-7.5-7.5' /%3E%3C/svg%3E");
+}
+
+html.light select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
+html.light input::placeholder,
+html.light textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
+/* Scrollbars in Light Mode */
+html.light ::-webkit-scrollbar-track {
+  background: rgba(241, 245, 249, 0.6);
+}
+
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(203, 213, 225, 0.8);
+}
+
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 1);
+}

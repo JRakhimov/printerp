@@ -7,10 +7,11 @@ import {
   OrderStatus,
   PaymentStatus,
 } from '../hooks/useOrders';
-import { useClients } from '../hooks/useClients';
+import { useClients, useCreateClient } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
-import { getClientDisplayName } from '@printerp/shared';
+import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
+import { CityInput } from './CityInput';
 import {
   X,
   Calendar,
@@ -30,6 +31,7 @@ import {
   Plus,
   Box,
   CreditCard,
+  UserPlus,
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -63,6 +65,35 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [editComment, setEditComment] = useState('');
   const [editStatus, setEditStatus] = useState<OrderStatus>(OrderStatus.CREATED);
   const [editItems, setEditItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
+
+  // Quick Client Creation state (2 fields: Instagram & City)
+  const createClient = useCreateClient();
+  const [isQuickCreatingClient, setIsQuickCreatingClient] = useState(false);
+  const [quickInstagram, setQuickInstagram] = useState('');
+  const [quickCity, setQuickCity] = useState('Ташкент');
+
+  const handleCreateQuickClient = async () => {
+    if (!quickInstagram.trim()) {
+      alert('Пожалуйста, укажите Instagram username');
+      return;
+    }
+
+    try {
+      const newClient = await createClient.mutateAsync({
+        instagramUsername: quickInstagram.trim(),
+        city: quickCity.trim() || null,
+        source: ClientSource.INSTAGRAM,
+      });
+
+      setEditClientId(newClient.id);
+      setIsQuickCreatingClient(false);
+      setQuickInstagram('');
+      setQuickCity('Ташкент');
+    } catch (err: any) {
+      console.error('Failed to create quick client:', err);
+      alert(err?.response?.data?.message || 'Ошибка при создании клиента');
+    }
+  };
 
   useEffect(() => {
     setIsEditing(initialMode === 'edit');
@@ -421,15 +452,90 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
             {/* MODE 2: EDITABLE FORM MODE */}
             {isEditing && (
               <form onSubmit={handleSaveOrder} className="space-y-4">
-                {/* Client Select (Searchable with suggestions) */}
+                {/* Client Select / Quick Create */}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Клиент *</label>
-                  <ClientSelect
-                    value={editClientId}
-                    onChange={setEditClientId}
-                    placeholder="Поиск по @instagram, имени, городу или телефону..."
-                    required
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-xs font-semibold text-slate-300">Клиент *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsQuickCreatingClient(!isQuickCreatingClient)}
+                      className="text-[11px] text-blue-400 hover:text-blue-300 font-medium flex items-center gap-1 transition"
+                    >
+                      {isQuickCreatingClient ? (
+                        <span>← Выбрать существующего</span>
+                      ) : (
+                        <>
+                          <UserPlus className="w-3.5 h-3.5" />
+                          <span>+ Новый клиент</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {isQuickCreatingClient ? (
+                    <div className="bg-slate-950/70 border border-blue-500/30 rounded-xl p-3 space-y-2.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-[11px] font-bold text-blue-400 flex items-center gap-1.5">
+                          <UserPlus className="w-3.5 h-3.5 text-blue-400" />
+                          Быстрое создание клиента
+                        </span>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                            Instagram *
+                          </label>
+                          <input
+                            type="text"
+                            value={quickInstagram}
+                            onChange={(e) => setQuickInstagram(e.target.value)}
+                            placeholder="@username"
+                            className="w-full bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block text-[11px] font-semibold text-slate-300 mb-1">
+                            Город / Область
+                          </label>
+                          <CityInput
+                            id="order-edit-quick-client-city"
+                            value={quickCity}
+                            onChange={setQuickCity}
+                            placeholder="напр. Ташкент"
+                            className="py-1.5"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => setIsQuickCreatingClient(false)}
+                          className="px-2.5 py-1 rounded-lg text-xs text-slate-400 hover:bg-slate-800 transition"
+                        >
+                          Отмена
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleCreateQuickClient}
+                          disabled={createClient.isPending || !quickInstagram.trim()}
+                          className="px-3 py-1 bg-blue-600 hover:bg-blue-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition shadow-sm"
+                        >
+                          {createClient.isPending && <Loader2 className="w-3 h-3 animate-spin" />}
+                          <span>Сохранить и выбрать</span>
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ClientSelect
+                      value={editClientId}
+                      onChange={setEditClientId}
+                      placeholder="Поиск по @instagram, имени, городу или телефону..."
+                      required
+                    />
+                  )}
                 </div>
 
                 {/* Models / Order Items Editor */}

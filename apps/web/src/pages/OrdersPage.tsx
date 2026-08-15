@@ -5,17 +5,31 @@ import { CreateOrderModal } from '../components/CreateOrderModal';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import { ShoppingBag, Plus, Search, Calendar, User, Clock, Loader2, Filter, AlertCircle, Pencil, Zap } from 'lucide-react';
 
+type FilterTab = 'ACTIVE' | OrderStatus;
+
 export const OrdersPage: React.FC = () => {
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<OrderStatus | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<FilterTab>('ACTIVE');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
   const [orderModalMode, setOrderModalMode] = useState<'view' | 'edit'>('view');
 
+  const apiStatusParam = statusFilter === 'ACTIVE' ? undefined : statusFilter;
+
   const { data: orders, isLoading } = useOrders({
-    status: statusFilter,
+    status: apiStatusParam,
     search: search || undefined,
   });
+
+  const displayedOrders = React.useMemo(() => {
+    if (!orders) return [];
+    if (statusFilter === 'ACTIVE') {
+      return orders.filter(
+        (o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED
+      );
+    }
+    return orders;
+  }, [orders, statusFilter]);
 
   const handleOpenDetail = (id: string, mode: 'view' | 'edit' = 'view') => {
     setSelectedOrderId(id);
@@ -110,17 +124,21 @@ export const OrdersPage: React.FC = () => {
       {/* Status Filter Tabs */}
       <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 scrollbar-none">
         <button
-          onClick={() => setStatusFilter(undefined)}
+          onClick={() => setStatusFilter('ACTIVE')}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-            statusFilter === undefined ? 'bg-emerald-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+            statusFilter === 'ACTIVE'
+              ? 'bg-emerald-600 text-white'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
-          Все заказы
+          Активные
         </button>
         <button
           onClick={() => setStatusFilter(OrderStatus.PRINTING)}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-            statusFilter === OrderStatus.PRINTING ? 'bg-amber-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+            statusFilter === OrderStatus.PRINTING
+              ? 'bg-amber-600 text-white'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
           В печати
@@ -128,7 +146,9 @@ export const OrdersPage: React.FC = () => {
         <button
           onClick={() => setStatusFilter(OrderStatus.PRINTED)}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-            statusFilter === OrderStatus.PRINTED ? 'bg-sky-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+            statusFilter === OrderStatus.PRINTED
+              ? 'bg-sky-600 text-white'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
           Напечатано
@@ -136,7 +156,9 @@ export const OrdersPage: React.FC = () => {
         <button
           onClick={() => setStatusFilter(OrderStatus.COMPLETED)}
           className={`px-3 py-1.5 rounded-xl text-xs font-medium whitespace-nowrap transition ${
-            statusFilter === OrderStatus.COMPLETED ? 'bg-emerald-600 text-white' : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
+            statusFilter === OrderStatus.COMPLETED
+              ? 'bg-emerald-600 text-white'
+              : 'bg-slate-900 border border-slate-800 text-slate-400 hover:text-white'
           }`}
         >
           Выполнены
@@ -151,17 +173,21 @@ export const OrdersPage: React.FC = () => {
       )}
 
       {/* Empty State */}
-      {!isLoading && orders?.length === 0 && (
+      {!isLoading && displayedOrders.length === 0 && (
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-8 text-center text-slate-400 space-y-2">
           <ShoppingBag className="w-8 h-8 text-slate-600 mx-auto" />
           <p className="text-sm font-medium">Заказы не найдены</p>
-          <p className="text-xs text-slate-500">Создайте первый заказ клиента, чтобы начать отслеживание печати.</p>
+          <p className="text-xs text-slate-500">
+            {statusFilter === 'ACTIVE'
+              ? 'Активные заказы отсутствуют.'
+              : 'Создайте первый заказ клиента, чтобы начать отслеживание печати.'}
+          </p>
         </div>
       )}
 
       {/* Orders List */}
       <div className="space-y-3">
-        {orders?.map((order) => {
+        {displayedOrders.map((order) => {
           return (
             <div
               key={order.id}

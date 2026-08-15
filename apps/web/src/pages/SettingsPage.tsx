@@ -8,6 +8,7 @@ import {
 } from '@printerp/shared';
 import { useFinancialSettings, useUpdateFinancialSettings } from '../hooks/useSettings';
 import { useUsers, useUpdateUser, useDeleteUser, UserItem } from '../hooks/useUsers';
+import { useTheme } from '../contexts/ThemeContext';
 import { AddUserModal } from '../components/AddUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import {
@@ -26,9 +27,13 @@ import {
   XCircle,
   Send,
   Edit,
+  Sun,
+  Moon,
+  Palette,
 } from 'lucide-react';
 
 export const SettingsPage: React.FC = () => {
+  const { theme, setTheme } = useTheme();
   const [isAddUserModalOpen, setIsAddUserModalOpen] = React.useState(false);
   const [editingUser, setEditingUser] = React.useState<UserItem | null>(null);
 
@@ -111,7 +116,58 @@ export const SettingsPage: React.FC = () => {
             <Settings className="w-5 h-5 text-amber-400" />
             Настройки системы
           </h2>
-          <p className="text-xs text-slate-400">Правила ценообразования, финансовые константы и доступ команды</p>
+          <p className="text-xs text-slate-400">Правила ценообразования, темы и доступ команды</p>
+        </div>
+      </div>
+
+      {/* Theme & Interface Appearance Card */}
+      <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-2.5">
+          <h3 className="text-xs font-bold text-white flex items-center gap-2">
+            <Palette className="w-4 h-4 text-indigo-400" />
+            Тема и оформление интерфейса
+          </h3>
+          <span className="text-[10px] bg-indigo-500/10 text-indigo-400 font-semibold px-2 py-0.5 rounded-md border border-indigo-500/20">
+            {theme === 'dark' ? 'Темная тема' : 'Светлая тема'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3 pt-1">
+          <button
+            type="button"
+            onClick={() => setTheme('dark')}
+            className={`p-3 rounded-xl border flex items-center space-x-3 transition ${
+              theme === 'dark'
+                ? 'bg-slate-800 border-indigo-500 text-white font-bold ring-1 ring-indigo-500/30'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-amber-400 border border-slate-800 shrink-0">
+              <Moon className="w-4 h-4 text-indigo-400" />
+            </div>
+            <div className="text-left">
+              <span className="text-xs font-bold block">Темная тема</span>
+              <span className="text-[10px] text-slate-400 font-normal">Dark Slate Blue</span>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setTheme('light')}
+            className={`p-3 rounded-xl border flex items-center space-x-3 transition ${
+              theme === 'light'
+                ? 'bg-slate-800 border-amber-500 text-white font-bold ring-1 ring-amber-500/30'
+                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+            }`}
+          >
+            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-amber-500 border border-slate-200 shrink-0">
+              <Sun className="w-4 h-4 text-amber-500" />
+            </div>
+            <div className="text-left">
+              <span className="text-xs font-bold block">Светлая тема</span>
+              <span className="text-[10px] text-slate-400 font-normal">Clean Light Gray</span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -237,11 +293,11 @@ export const SettingsPage: React.FC = () => {
               <div
                 key={user.id}
                 onClick={() => setEditingUser(user)}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs hover:border-slate-700 transition cursor-pointer group"
+                className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs transition cursor-pointer group"
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="font-bold text-white group-hover:text-amber-400 transition">
+                    <span className="font-bold text-white">
                       {user.firstName || user.telegramUsername || `ID: ${user.telegramId}`}
                     </span>
 
