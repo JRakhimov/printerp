@@ -151,7 +151,7 @@ export const ProjectsPage: React.FC = () => {
               <div className="flex items-center space-x-3 text-[11px]">
                 <span className="flex items-center gap-1 text-slate-300">
                   <Layers className="w-3.5 h-3.5 text-blue-400" />
-                  {project.weightG}г всего
+                  {project.weightG}г
                 </span>
                 <span className="flex items-center gap-1 text-slate-300">
                   <DollarSign className="w-3.5 h-3.5 text-emerald-400" />

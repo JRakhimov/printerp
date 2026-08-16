@@ -27,6 +27,7 @@ import {
   MapPin,
   Pencil,
   ShoppingBag,
+  LogOut,
 } from 'lucide-react';
 
 type SubView = 'menu' | 'clients' | 'filaments' | 'finance' | 'settings' | 'printers';
@@ -356,6 +357,19 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
     );
   }
 
+  const handleCloseApp = () => {
+    const tg = (window as any).Telegram?.WebApp;
+    if (tg && typeof tg.close === 'function') {
+      tg.close();
+    } else {
+      try {
+        window.close();
+      } catch (e) {
+        console.warn('Window close not allowed by browser context');
+      }
+    }
+  };
+
   // Main menu list
   const menuSections = [
     { id: 'clients', title: 'База клиентов', icon: Users, description: 'Контакты, соцсети и история заказов', color: 'text-blue-400' },
@@ -363,6 +377,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
     { id: 'finance', title: 'Финансы и расходы', icon: DollarSign, description: 'Денежные потоки, платежи и статьи затрат', color: 'text-teal-400' },
     { id: 'printers', title: '3D-Принтеры', icon: Printer, description: 'Bambu Lab MQTT телеметрия и статусы', color: 'text-emerald-400' },
     { id: 'settings', title: 'Настройки системы', icon: Settings, description: 'Пользователи, Telegram-доступ и параметры', color: 'text-amber-400' },
+    { id: 'close_app', title: 'Закрыть приложение', icon: LogOut, description: 'Завершить работу и закрыть мини-апп', color: 'text-rose-400' },
   ];
 
   return (
@@ -380,6 +395,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                 if (item.id === 'filaments') setActiveView('filaments');
                 if (item.id === 'finance') setActiveView('finance');
                 if (item.id === 'settings') setActiveView('settings');
+                if (item.id === 'close_app') handleCloseApp();
               }}
               className="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex items-center justify-between hover:border-slate-700 transition cursor-pointer"
             >

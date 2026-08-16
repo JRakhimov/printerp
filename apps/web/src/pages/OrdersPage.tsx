@@ -51,6 +51,8 @@ export const OrdersPage: React.FC = () => {
         return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
       case OrderStatus.PRINTED:
         return 'bg-sky-500/10 text-sky-400 border-sky-500/20';
+      case OrderStatus.POST_PROCESSING:
+        return 'bg-purple-500/10 text-purple-400 border-purple-500/20';
       case OrderStatus.COMPLETED:
         return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
       case OrderStatus.CANCELLED:
@@ -70,6 +72,8 @@ export const OrdersPage: React.FC = () => {
         return 'В ПЕЧАТИ';
       case OrderStatus.PRINTED:
         return 'НАПЕЧАТАН';
+      case OrderStatus.POST_PROCESSING:
+        return 'ПОСТОБРАБОТКА';
       case OrderStatus.COMPLETED:
         return 'ВЫПОЛНЕН';
       case OrderStatus.CANCELLED:

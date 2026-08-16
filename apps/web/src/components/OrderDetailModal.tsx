@@ -240,6 +240,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     { status: OrderStatus.DESIGN, label: 'ДИЗАЙН', color: 'bg-indigo-500/20 text-indigo-400 border-indigo-500/30' },
     { status: OrderStatus.PRINTING, label: 'В ПЕЧАТИ', color: 'bg-amber-500/20 text-amber-400 border-amber-500/30' },
     { status: OrderStatus.PRINTED, label: 'НАПЕЧАТАН', color: 'bg-sky-500/20 text-sky-400 border-sky-500/30' },
+    { status: OrderStatus.POST_PROCESSING, label: 'ПОСТОБРАБОТКА', color: 'bg-purple-500/20 text-purple-400 border-purple-500/30' },
     { status: OrderStatus.COMPLETED, label: 'ВЫПОЛНЕН', color: 'bg-emerald-500/20 text-emerald-400 border-emerald-500/30' },
     { status: OrderStatus.CANCELLED, label: 'ОТМЕНЁН', color: 'bg-red-500/20 text-red-400 border-red-500/30' },
   ];
