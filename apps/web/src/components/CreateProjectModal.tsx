@@ -130,7 +130,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <LinkIcon className="w-3.5 h-3.5 text-indigo-400" />
-                Ссылка на модель (URL)
+                Ссылка на модель
               </label>
               <input
                 {...register('modelUrl')}
@@ -143,7 +143,7 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                 <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                Ссылка на фото (URL)
+                Ссылка на фото
               </label>
               <input
                 {...register('imageUrl')}

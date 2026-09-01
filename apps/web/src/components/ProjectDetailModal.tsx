@@ -240,7 +240,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                         className="inline-flex items-center gap-1.5 text-xs text-indigo-400 hover:text-indigo-300 font-semibold bg-indigo-500/10 px-3 py-1.5 rounded-xl border border-indigo-500/20 transition"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
-                        <span>Открыть ссылку на 3D-модель (Printables / Thingiverse)</span>
+                        <span>Открыть ссылку на 3D-модель</span>
                       </a>
                     </div>
                   )}
@@ -362,7 +362,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                       <LinkIcon className="w-3.5 h-3.5 text-indigo-400" />
-                      Ссылка на модель (URL)
+                      Ссылка на модель
                     </label>
                     <input
                       {...register('modelUrl')}
@@ -374,7 +374,7 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
                       <ImageIcon className="w-3.5 h-3.5 text-blue-400" />
-                      Ссылка на фото (URL)
+                      Ссылка на фото
                     </label>
                     <input
                       {...register('imageUrl')}

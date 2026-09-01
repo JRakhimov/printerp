@@ -146,8 +146,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       // 2. Format notification text
-      const orderNumber = `#100${order.orderNumber}`;
-      const clientName = order.client?.name || 'Неизвестный клиент';
+      const orderNumber = `#${order.orderNumber}`;
+      const clientName = order.client?.instagramUsername || 'Неизвестный клиент';
       const finalPrice = Number(order.finalPrice || 0).toLocaleString('ru-RU');
 
       const itemsList =
