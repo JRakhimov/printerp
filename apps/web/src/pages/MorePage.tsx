@@ -292,12 +292,24 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
                 </div>
               </div>
 
-              {fil.stockG !== null && (
-                <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
-                  <span>Остаток на складе:</span>
-                  <span className="font-semibold text-slate-200">{fil.stockG} г</span>
-                </div>
-              )}
+              <div className="pt-2 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                <span>Остаток на складе:</span>
+                {fil.stockG !== null ? (
+                  <span
+                    className={`font-bold px-2 py-0.5 rounded-lg text-xs ${
+                      fil.stockG <= 0
+                        ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                        : fil.stockG < 200
+                        ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                        : 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                    }`}
+                  >
+                    {fil.stockG} г
+                  </span>
+                ) : (
+                  <span className="text-slate-500 italic">не указан</span>
+                )}
+              </div>
             </div>
           ))}
         </div>

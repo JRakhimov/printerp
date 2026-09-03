@@ -11,6 +11,90 @@ export class OrdersService {
     private readonly telegramBotService: TelegramBotService,
   ) {}
 
+  /**
+   * Helper: calculate filament usage (in grams) for a list of items
+   */
+  private async calculateFilamentUsage(
+    items: { projectId?: string | null; quantity: number }[],
+    tx: any = this.prisma,
+  ): Promise<Map<string, number>> {
+    const usageMap = new Map<string, number>();
+    const projectIds = items.map((i) => i.projectId).filter(Boolean) as string[];
+
+    if (projectIds.length === 0) {
+      return usageMap;
+    }
+
+    const projects = await tx.project.findMany({
+      where: { id: { in: projectIds } },
+      include: {
+        projectFilaments: true,
+      },
+    });
+
+    const projectMap = new Map(projects.map((p: any) => [p.id, p]));
+
+    for (const item of items) {
+      if (!item.projectId) continue;
+      const project: any = projectMap.get(item.projectId);
+      if (!project || !project.projectFilaments) continue;
+
+      const qty = Number(item.quantity) || 1;
+      for (const pf of project.projectFilaments) {
+        const current = usageMap.get(pf.filamentId) || 0;
+        usageMap.set(pf.filamentId, current + pf.grams * qty);
+      }
+    }
+
+    return usageMap;
+  }
+
+  /**
+   * Deduct filament stock for given order items
+   */
+  private async deductFilamentStock(
+    items: { projectId?: string | null; quantity: number }[],
+    tx: any = this.prisma,
+  ) {
+    const usageMap = await this.calculateFilamentUsage(items, tx);
+
+    for (const [filamentId, totalGrams] of usageMap.entries()) {
+      const filament = await tx.filament.findUnique({ where: { id: filamentId } });
+      if (!filament) continue;
+
+      const currentStock = filament.stockG ?? filament.spoolWeightG ?? 1000;
+      await tx.filament.update({
+        where: { id: filamentId },
+        data: {
+          stockG: currentStock - totalGrams,
+        },
+      });
+    }
+  }
+
+  /**
+   * Restore/refund filament stock for given order items
+   */
+  private async restoreFilamentStock(
+    items: { projectId?: string | null; quantity: number }[],
+    tx: any = this.prisma,
+  ) {
+    const usageMap = await this.calculateFilamentUsage(items, tx);
+
+    for (const [filamentId, totalGrams] of usageMap.entries()) {
+      const filament = await tx.filament.findUnique({ where: { id: filamentId } });
+      if (!filament) continue;
+
+      const currentStock = filament.stockG ?? filament.spoolWeightG ?? 1000;
+      await tx.filament.update({
+        where: { id: filamentId },
+        data: {
+          stockG: currentStock + totalGrams,
+        },
+      });
+    }
+  }
+
   async create(userId: string, dto: CreateOrderDto) {
     if (!dto.items || dto.items.length === 0) {
       throw new BadRequestException('Order must contain at least one item');
@@ -121,6 +205,9 @@ export class OrdersService {
       },
     });
 
+    // Deduct filament inventory based on ordered models
+    await this.deductFilamentStock(dto.items);
+
     // Notify all other team members via Telegram Bot (excluding creator)
     this.telegramBotService.notifyNewOrder(createdOrder, createdOrder.createdById || userId);
 
@@ -205,6 +292,14 @@ export class OrdersService {
       return order;
     }
 
+    // If cancelling order, refund filament stock
+    if (order.status !== OrderStatus.CANCELLED && dto.status === OrderStatus.CANCELLED) {
+      await this.restoreFilamentStock(order.items);
+    } else if (order.status === OrderStatus.CANCELLED && dto.status !== OrderStatus.CANCELLED) {
+      // If reactivating cancelled order, re-deduct filament stock
+      await this.deductFilamentStock(order.items);
+    }
+
     return this.prisma.order.update({
       where: { id },
       data: {
@@ -271,6 +366,12 @@ export class OrdersService {
           totalPrice,
         };
       });
+
+      // Adjust filament stock if order is active
+      if (existingOrder.status !== OrderStatus.CANCELLED) {
+        await this.restoreFilamentStock(existingOrder.items);
+        await this.deductFilamentStock(dto.items);
+      }
 
       // Delete existing order items before recreating new items
       await this.prisma.orderItem.deleteMany({
@@ -356,7 +457,11 @@ export class OrdersService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    const existingOrder = await this.findOne(id);
+
+    if (existingOrder.status !== OrderStatus.CANCELLED) {
+      await this.restoreFilamentStock(existingOrder.items);
+    }
 
     return this.prisma.order.update({
       where: { id },
