@@ -287,6 +287,8 @@ model Printer {
   printProgress    Int?                   @map("print_progress")
   remainingMinutes Int?                   @map("remaining_minutes")
   currentFile      String?                @map("current_file")
+  initialWorkHours Float?                 @default(0) @map("initial_work_hours")
+  trackedWorkMinutes Float?               @default(0) @map("tracked_work_minutes")
   metadata         Json?
   createdAt        DateTime               @default(now()) @map("created_at")
   updatedAt        DateTime               @updatedAt @map("updated_at")

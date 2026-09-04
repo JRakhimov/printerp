@@ -8,6 +8,7 @@ import {
   ExpenseCategory,
 } from '@printerp/shared';
 import { useCreateTransaction } from '../hooks/useFinance';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, DollarSign, Loader2, Calendar, Tag, MessageSquare } from 'lucide-react';
 
 interface CreateExpenseModalProps {
@@ -16,6 +17,7 @@ interface CreateExpenseModalProps {
 }
 
 export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, onClose }) => {
+  useBodyScrollLock(isOpen);
   const createTx = useCreateTransaction();
 
   const {
@@ -53,7 +55,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -122,6 +124,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
               <option value={ExpenseCategory.PRINTER_PARTS}>Запчасти и обслуживание</option>
               <option value={ExpenseCategory.TOOLS}>Инструменты и аксессуары</option>
               <option value={ExpenseCategory.DELIVERY}>Упаковка и доставка</option>
+              <option value={ExpenseCategory.OTHER}>Реклама и продвижение</option>
               <option value={ExpenseCategory.OTHER}>Прочие расходы</option>
             </select>
           </div>

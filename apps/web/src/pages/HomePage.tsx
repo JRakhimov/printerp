@@ -213,7 +213,7 @@ export const HomePage: React.FC = () => {
               return (
                 <div
                   key={printer.id}
-                  className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 space-y-2 hover:border-slate-700 transition"
+                  className="bg-slate-950/70 border border-slate-800/90 rounded-xl p-3 space-y-2 transition"
                 >
                   <div className="flex items-center justify-between text-xs">
                     <div className="flex items-center space-x-2">
@@ -308,7 +308,7 @@ export const HomePage: React.FC = () => {
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
-                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between hover:border-slate-700 cursor-pointer transition"
+                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer transition"
                 >
                   <div className="space-y-0.5 min-w-0 flex-1 pr-2">
                     <div className="flex items-center gap-2">
@@ -365,7 +365,7 @@ export const HomePage: React.FC = () => {
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
-                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between hover:border-slate-700 cursor-pointer transition"
+                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer transition"
                 >
                   <div>
                     <span className="text-[11px] font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>

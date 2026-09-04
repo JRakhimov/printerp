@@ -3,6 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { UpdatePrinterSchema, UpdatePrinterDto, PrinterResponse } from '@printerp/shared';
 import { useUpdatePrinter, useTestPrinterConnection } from '../hooks/usePrinters';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   X,
   Printer as PrinterIcon,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Activity,
+  Clock,
 } from 'lucide-react';
 
 interface EditPrinterModalProps {
@@ -26,6 +28,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
   isOpen,
   onClose,
 }) => {
+  useBodyScrollLock(isOpen && !!printer);
   const updatePrinter = useUpdatePrinter();
   const testConnection = useTestPrinterConnection();
 
@@ -53,6 +56,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
         accessCode: printer.accessCode || '',
         serialNumber: printer.serialNumber || '',
         isActive: printer.isActive,
+        initialWorkHours: printer.initialWorkHours !== null && printer.initialWorkHours !== undefined ? printer.initialWorkHours : 0,
       });
       setTestResult(null);
     }
@@ -61,8 +65,15 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
   const ipAddress = watch('ipAddress');
   const accessCode = watch('accessCode');
   const serialNumber = watch('serialNumber');
+  const watchedInitialHours = watch('initialWorkHours');
 
   if (!isOpen || !printer) return null;
+
+  const currentInitialHours = typeof watchedInitialHours === 'number' && !isNaN(watchedInitialHours) ? watchedInitialHours : (printer.initialWorkHours || 0);
+  const trackedMinutes = Math.round(printer.trackedWorkMinutes || 0);
+  const trackedHours = Math.floor(trackedMinutes / 60);
+  const trackedRemainMins = trackedMinutes % 60;
+  const totalHours = Number((currentInitialHours + (trackedMinutes / 60)).toFixed(1));
 
   const handleTestLink = async () => {
     if (!ipAddress || !accessCode) {
@@ -102,7 +113,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -185,6 +196,46 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
                 placeholder="напр. 01P00A3B12345678"
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono uppercase"
               />
+            </div>
+          </div>
+
+          {/* Initial Mileage & Stats */}
+          <div className="space-y-2">
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-indigo-400" />
+                  Начальный пробег (моточасы)
+                </span>
+                <span className="text-[10px] text-slate-500 font-normal">с экрана принтера</span>
+              </label>
+              <input
+                {...register('initialWorkHours', { valueAsNumber: true })}
+                type="number"
+                step="any"
+                min="0"
+                placeholder="0 (напр. 150)"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+              />
+            </div>
+
+            {/* Mileage Breakdown Box */}
+            <div className="bg-slate-950/70 border border-slate-800/80 rounded-xl p-2.5 space-y-1.5 text-xs">
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Начальный пробег:</span>
+                <span className="font-mono text-slate-200 font-semibold">{currentInitialHours} ч</span>
+              </div>
+              <div className="flex items-center justify-between text-slate-400">
+                <span>Напечатано через PrintERP:</span>
+                <span className="font-mono text-emerald-400 font-semibold">{trackedHours} ч {trackedRemainMins} мин</span>
+              </div>
+              <div className="flex items-center justify-between pt-1 border-t border-slate-800/80 text-white font-bold">
+                <span className="flex items-center gap-1">
+                  <Clock className="w-3.5 h-3.5 text-amber-400" />
+                  Итоговый моторесурс:
+                </span>
+                <span className="font-mono text-amber-400 text-sm">{totalHours} ч</span>
+              </div>
             </div>
           </div>
 

@@ -12,6 +12,8 @@ import { useProjects } from '../hooks/useProjects';
 import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
 import { CityInput } from './CityInput';
+import { ProjectDetailModal } from './ProjectDetailModal';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   X,
   Calendar,
@@ -32,6 +34,7 @@ import {
   Box,
   CreditCard,
   UserPlus,
+  ChevronRight,
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -45,6 +48,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   initialMode = 'view',
   onClose,
 }) => {
+  useBodyScrollLock(!!orderId);
   const { data: order, isLoading } = useOrder(orderId);
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
@@ -55,6 +59,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   const [isEditing, setIsEditing] = useState<boolean>(initialMode === 'edit');
   const [statusComment, setStatusComment] = useState('');
+  const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
 
   // Editable form fields
   const [editClientId, setEditClientId] = useState('');
@@ -251,8 +256,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const marginPercentage = (order?.finalPrice || 0) > 0 ? Math.round((profit / (order?.finalPrice || 1)) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         {isLoading || !order ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
@@ -321,20 +326,55 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                 {/* Order Items List */}
                 <div className="border border-slate-800 rounded-xl p-3 bg-slate-950/50 space-y-2">
-                  <span className="text-xs font-semibold text-slate-300">Модели и позиции ({order.items.length})</span>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-slate-300">
+                      Модели и позиции ({order.items.length})
+                    </span>
+                    <span className="text-[10px] text-slate-500">
+                      Нажмите на модель для перехода
+                    </span>
+                  </div>
                   <div className="space-y-2">
                     {order.items.map((item) => (
                       <div
                         key={item.id}
-                        className="bg-slate-900 border border-slate-800 rounded-lg p-2.5 flex items-center justify-between"
+                        onClick={() => {
+                          if (item.projectId) {
+                            setViewingProjectId(item.projectId);
+                          }
+                        }}
+                        className={`bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between transition ${
+                          item.projectId
+                            ? 'cursor-pointer hover:border-indigo-500/60 hover:bg-slate-800/70 group'
+                            : ''
+                        }`}
+                        title={item.projectId ? 'Нажмите для просмотра модели' : undefined}
                       >
-                        <div>
-                          <h4 className="text-xs font-bold text-white">{item.projectNameSnapshot}</h4>
-                          <p className="text-[10px] text-slate-400">
-                            {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
-                          </p>
+                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                          <div
+                            className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
+                              item.projectId
+                                ? 'bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 group-hover:bg-indigo-500/20 group-hover:scale-105'
+                                : 'bg-slate-800 border border-slate-700 text-slate-400'
+                            }`}
+                          >
+                            <Box className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <h4 className="text-xs font-bold text-white group-hover:text-indigo-300 transition truncate">
+                                {item.projectNameSnapshot}
+                              </h4>
+                              {item.projectId && (
+                                <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition shrink-0" />
+                              )}
+                            </div>
+                            <p className="text-[10px] text-slate-400">
+                              {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
+                            </p>
+                          </div>
                         </div>
-                        <div className="text-right">
+                        <div className="text-right shrink-0">
                           <span className="text-xs font-bold text-white block">
                             {item.totalPrice.toLocaleString('ru-RU')} сум
                           </span>
@@ -755,6 +795,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </>
         )}
       </div>
+
+      <ProjectDetailModal
+        projectId={viewingProjectId}
+        onClose={() => setViewingProjectId(null)}
+        onBack={() => setViewingProjectId(null)}
+        backLabel="Назад"
+      />
     </div>
   );
 };

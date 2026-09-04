@@ -21,6 +21,8 @@ export interface BambuTelemetry {
 export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BambuMqttService.name);
   private clients = new Map<string, MqttClient>();
+  private lastRunningTimestamps = new Map<string, number>();
+  private pendingWorkMinutes = new Map<string, number>();
 
   constructor(private readonly prisma: PrismaService) {}
 
@@ -38,6 +40,21 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       }
     }
     this.clients.clear();
+
+    for (const [printerId, minutes] of this.pendingWorkMinutes.entries()) {
+      if (minutes > 0) {
+        try {
+          await this.prisma.printer.update({
+            where: { id: printerId },
+            data: { trackedWorkMinutes: { increment: Math.round(minutes * 100) / 100 } },
+          });
+        } catch (err) {
+          // ignore on shutdown
+        }
+      }
+    }
+    this.pendingWorkMinutes.clear();
+    this.lastRunningTimestamps.clear();
   }
 
   async initAllPrinters() {
@@ -148,6 +165,16 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       }
       this.clients.delete(printerId);
     }
+
+    const pending = this.pendingWorkMinutes.get(printerId) || 0;
+    if (pending > 0) {
+      this.prisma.printer.update({
+        where: { id: printerId },
+        data: { trackedWorkMinutes: { increment: Math.round(pending * 100) / 100 } },
+      }).catch(() => {});
+      this.pendingWorkMinutes.delete(printerId);
+    }
+    this.lastRunningTimestamps.delete(printerId);
   }
 
   private requestPushAll(client: MqttClient, serialNumber: string | null) {
@@ -197,6 +224,40 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     }
     if (currentFile !== undefined) {
       updateData.currentFile = currentFile;
+    }
+
+    // Accumulate print working time
+    if (gcodeState === 'RUNNING') {
+      const now = Date.now();
+      const lastTime = this.lastRunningTimestamps.get(printerId);
+      let addedMinutes = 0;
+
+      if (lastTime) {
+        const diffMs = now - lastTime;
+        // Accept valid report interval between 500ms and 2 minutes
+        if (diffMs >= 500 && diffMs <= 120_000) {
+          addedMinutes = diffMs / 60_000;
+        }
+      }
+      this.lastRunningTimestamps.set(printerId, now);
+
+      if (addedMinutes > 0) {
+        const currentPending = (this.pendingWorkMinutes.get(printerId) || 0) + addedMinutes;
+        // Batch DB update: flush if accumulated at least 0.5 minutes (30 seconds)
+        if (currentPending >= 0.5) {
+          updateData.trackedWorkMinutes = { increment: Math.round(currentPending * 100) / 100 };
+          this.pendingWorkMinutes.set(printerId, 0);
+        } else {
+          this.pendingWorkMinutes.set(printerId, currentPending);
+        }
+      }
+    } else if (gcodeState !== undefined) {
+      const pending = this.pendingWorkMinutes.get(printerId) || 0;
+      if (pending > 0) {
+        updateData.trackedWorkMinutes = { increment: Math.round(pending * 100) / 100 };
+        this.pendingWorkMinutes.set(printerId, 0);
+      }
+      this.lastRunningTimestamps.delete(printerId);
     }
 
     await this.prisma.printer.update({

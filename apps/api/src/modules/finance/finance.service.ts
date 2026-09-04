@@ -316,7 +316,9 @@ export class FinanceService {
       select: {
         id: true,
         name: true,
+        instagramUsername: true,
         telegramUsername: true,
+        phone: true,
         orders: {
           where: { status: { not: 'CANCELLED' } },
           select: {
@@ -337,6 +339,7 @@ export class FinanceService {
       return {
         id: c.id,
         name: getClientDisplayName(c),
+        instagramUsername: c.instagramUsername,
         telegramUsername: c.telegramUsername,
         totalOrders,
         totalSpent,

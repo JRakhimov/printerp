@@ -14,6 +14,7 @@ export const CreatePrinterSchema = z.object({
   manufacturer: z.nativeEnum(PrinterManufacturer).default(PrinterManufacturer.BAMBU_LAB),
   integrationType: z.nativeEnum(PrinterIntegrationType).default(PrinterIntegrationType.BAMBUDDY),
   isActive: z.boolean().default(true),
+  initialWorkHours: z.number().nonnegative().optional(),
 });
 
 export type CreatePrinterDto = z.infer<typeof CreatePrinterSchema>;
@@ -26,6 +27,8 @@ export const UpdatePrinterSchema = z.object({
   accessCode: z.string().optional().nullable(),
   isActive: z.boolean().optional(),
   lastStatus: z.string().optional().nullable(),
+  initialWorkHours: z.number().nonnegative().optional(),
+  trackedWorkMinutes: z.number().nonnegative().optional(),
 });
 
 export type UpdatePrinterDto = z.infer<typeof UpdatePrinterSchema>;
@@ -73,6 +76,9 @@ export interface PrinterResponse {
   printProgress: number | null;
   remainingMinutes: number | null;
   currentFile: string | null;
+  initialWorkHours?: number | null;
+  trackedWorkMinutes?: number | null;
+  totalWorkHours?: number | null;
   createdAt: string;
   updatedAt: string;
   activeJob?: {

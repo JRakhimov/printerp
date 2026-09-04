@@ -57,6 +57,9 @@ export class PrintersService {
         printProgress: p.printProgress,
         remainingMinutes: p.remainingMinutes,
         currentFile: p.currentFile,
+        initialWorkHours: p.initialWorkHours,
+        trackedWorkMinutes: p.trackedWorkMinutes,
+        totalWorkHours: Number(((p.initialWorkHours || 0) + ((p.trackedWorkMinutes || 0) / 60)).toFixed(1)),
         createdAt: p.createdAt.toISOString(),
         updatedAt: p.updatedAt.toISOString(),
         activeJob: activeJob
@@ -112,6 +115,8 @@ export class PrintersService {
         accessCode: dto.accessCode,
         integrationType: dto.integrationType,
         isActive: dto.isActive,
+        initialWorkHours: dto.initialWorkHours !== undefined ? dto.initialWorkHours : 0,
+        trackedWorkMinutes: 0,
       },
     });
 
@@ -138,6 +143,8 @@ export class PrintersService {
         accessCode: dto.accessCode,
         isActive: dto.isActive,
         lastStatus: dto.lastStatus,
+        initialWorkHours: dto.initialWorkHours,
+        trackedWorkMinutes: dto.trackedWorkMinutes,
       },
     });
 

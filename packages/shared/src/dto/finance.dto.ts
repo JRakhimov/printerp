@@ -65,7 +65,8 @@ export interface TopModelMetric {
 export interface TopClientMetric {
   id: string;
   name: string;
-  telegramUsername: string | null;
+  instagramUsername?: string | null;
+  telegramUsername?: string | null;
   totalOrders: number;
   totalSpent: number;
 }

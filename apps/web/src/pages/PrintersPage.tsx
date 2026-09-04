@@ -19,6 +19,7 @@ import {
   Loader2,
   RefreshCw,
   Zap,
+  Gauge,
 } from 'lucide-react';
 
 export const PrintersPage: React.FC = () => {
@@ -171,10 +172,17 @@ export const PrintersPage: React.FC = () => {
 
             const testMsg = testMessages[printer.id];
 
+            const initialH = printer.initialWorkHours ?? 0;
+            const trackedM = Math.round(printer.trackedWorkMinutes ?? 0);
+            const totalH =
+              printer.totalWorkHours !== undefined && printer.totalWorkHours !== null
+                ? printer.totalWorkHours
+                : Number((initialH + trackedM / 60).toFixed(1));
+
             return (
               <div
                 key={printer.id}
-                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 hover:border-slate-700 transition shadow-sm"
+                className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 transition shadow-sm"
               >
                 {/* Header: Name, Model & Status Badge */}
                 <div className="flex items-start justify-between">
@@ -284,6 +292,24 @@ export const PrintersPage: React.FC = () => {
                         {isPrinting && remainingMins > 0 ? timeString : '—'}
                       </p>
                     </div>
+                  </div>
+                </div>
+
+                {/* Mileage / Operating Hours */}
+                <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl px-3 py-2 flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-1.5 text-slate-400">
+                    <Gauge className="w-3.5 h-3.5 text-indigo-400" />
+                    <span>Моторесурс:</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {trackedM > 0 && (
+                      <span className="text-[10px] text-emerald-400 font-medium">
+                        +{Math.floor(trackedM / 60)}ч {trackedM % 60}м онлайн
+                      </span>
+                    )}
+                    <span className="font-bold text-white font-mono">
+                      {totalH} ч
+                    </span>
                   </div>
                 </div>
 

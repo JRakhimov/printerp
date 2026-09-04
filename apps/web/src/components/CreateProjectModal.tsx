@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateProjectSchema, CreateProjectDto } from '@printerp/shared';
 import { useCreateProject } from '../hooks/useProjects';
 import { useFilaments } from '../hooks/useFilaments';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, Box, Plus, Trash2, Loader2, Calculator, Link as LinkIcon, Image as ImageIcon } from 'lucide-react';
 
 interface CreateProjectModalProps {
@@ -12,6 +13,7 @@ interface CreateProjectModalProps {
 }
 
 export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, onClose }) => {
+  useBodyScrollLock(isOpen);
   const createProject = useCreateProject();
   const { data: filaments } = useFilaments();
 
@@ -92,8 +94,8 @@ export const CreateProjectModal: React.FC<CreateProjectModalProps> = ({ isOpen, 
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <Box className="w-4 h-4 text-indigo-400" />

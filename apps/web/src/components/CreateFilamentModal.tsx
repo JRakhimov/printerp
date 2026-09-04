@@ -3,7 +3,8 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { CreateFilamentSchema, CreateFilamentDto, FilamentMaterial } from '@printerp/shared';
 import { useCreateFilament } from '../hooks/useFilaments';
-import { X, Palette, Loader2 } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { X, Palette, Loader2, Pipette } from 'lucide-react';
 
 interface CreateFilamentModalProps {
   isOpen: boolean;
@@ -11,12 +12,14 @@ interface CreateFilamentModalProps {
 }
 
 export const CreateFilamentModal: React.FC<CreateFilamentModalProps> = ({ isOpen, onClose }) => {
+  useBodyScrollLock(isOpen);
   const createFilament = useCreateFilament();
 
   const {
     register,
     handleSubmit,
     reset,
+    watch,
     formState: { errors },
   } = useForm<CreateFilamentDto>({
     resolver: zodResolver(CreateFilamentSchema),
@@ -26,6 +29,8 @@ export const CreateFilamentModal: React.FC<CreateFilamentModalProps> = ({ isOpen
       color: '#3b82f6',
     },
   });
+
+  const currentColor = watch('color') || '#3b82f6';
 
   if (!isOpen) return null;
 
@@ -40,7 +45,7 @@ export const CreateFilamentModal: React.FC<CreateFilamentModalProps> = ({ isOpen
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
@@ -93,11 +98,21 @@ export const CreateFilamentModal: React.FC<CreateFilamentModalProps> = ({ isOpen
 
             <div>
               <label className="block text-xs font-semibold text-slate-300 mb-1">Цвет (метка)</label>
-              <input
-                {...register('color')}
-                type="color"
-                className="w-full bg-slate-950 border border-slate-800 h-9 rounded-xl px-1 py-1 cursor-pointer focus:border-blue-500 focus:outline-none"
-              />
+              <div className="relative flex items-center bg-slate-950 border border-slate-800 rounded-xl px-3 h-[38px] hover:border-slate-700 focus-within:border-blue-500 transition cursor-pointer">
+                <span
+                  className="w-4 h-4 rounded-full border border-white/20 shadow-sm shrink-0 mr-2.5"
+                  style={{ backgroundColor: currentColor }}
+                />
+                <span className="text-xs font-mono font-medium text-slate-200 uppercase flex-1 truncate">
+                  {currentColor}
+                </span>
+                <Pipette className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <input
+                  {...register('color')}
+                  type="color"
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+                />
+              </div>
             </div>
           </div>
 

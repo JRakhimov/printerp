@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useClient, useUpdateClient, useDeleteClient } from '../hooks/useClients';
 import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { CityInput } from './CityInput';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   X,
   User,
@@ -46,6 +47,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   onClose,
   onSelectOrder,
 }) => {
+  useBodyScrollLock(!!clientId);
   const { data: client, isLoading } = useClient(clientId || '');
   const updateClient = useUpdateClient();
   const deleteClient = useDeleteClient();
@@ -112,8 +114,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const unpaidBalance = Math.max(0, totalSpent - totalPaid);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         {isLoading || !client ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -371,7 +373,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <div
                         key={ord.id}
                         onClick={() => onSelectOrder && onSelectOrder(ord.id)}
-                        className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 hover:border-indigo-500/50 transition cursor-pointer group"
+                        className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 transition cursor-pointer group"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-2">

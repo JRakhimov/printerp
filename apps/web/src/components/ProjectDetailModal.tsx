@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { UpdateProjectSchema, UpdateProjectDto } from '@printerp/shared';
 import { useProject, useUpdateProject, useDeleteProject } from '../hooks/useProjects';
 import { useFilaments } from '../hooks/useFilaments';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   X,
   Box,
@@ -21,19 +22,27 @@ import {
   Trash2,
   Link as LinkIcon,
   Eye,
+  ChevronLeft,
 } from 'lucide-react';
 
 interface ProjectDetailModalProps {
   projectId: string | null;
   initialMode?: 'view' | 'edit';
   onClose: () => void;
+  onBack?: () => void;
+  backLabel?: string;
+  zIndex?: string;
 }
 
 export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   projectId,
   initialMode = 'view',
   onClose,
+  onBack,
+  backLabel = 'Назад',
+  zIndex,
 }) => {
+  useBodyScrollLock(!!projectId);
   const { data: project, isLoading } = useProject(projectId);
   const updateProject = useUpdateProject();
   const deleteProject = useDeleteProject();
@@ -162,9 +171,11 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const profit = project ? project.defaultPrice - project.defaultCost : 0;
   const marginPercentage = project && project.defaultPrice > 0 ? Math.round((profit / project.defaultPrice) * 100) : 0;
 
+  const effectiveZIndex = zIndex || (onBack ? 'z-[60]' : 'z-50');
+
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8 max-h-[90vh] overflow-y-auto">
+    <div className={`fixed inset-0 ${effectiveZIndex} bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain`}>
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
         {isLoading || !project ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -173,10 +184,22 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
           <>
             {/* Modal Header */}
             <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <Box className="w-4 h-4 text-indigo-400" />
-                {isEditing ? 'Редактировать 3D-модель' : project.name}
-              </h3>
+              <div className="flex items-center gap-2 min-w-0 mr-2">
+                {onBack && (
+                  <button
+                    onClick={onBack}
+                    className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 transition bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 shrink-0 shadow-sm"
+                    title={backLabel}
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                    <span className="font-medium">{backLabel}</span>
+                  </button>
+                )}
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 truncate">
+                  <Box className="w-4 h-4 text-indigo-400 shrink-0" />
+                  <span className="truncate">{isEditing ? 'Редактировать 3D-модель' : project.name}</span>
+                </h3>
+              </div>
               <div className="flex items-center space-x-2">
                 {!isEditing ? (
                   <button

@@ -30,6 +30,7 @@ import {
   Sparkles,
   Calculator,
   Coins,
+  Instagram,
 } from 'lucide-react';
 import { ExpenseCategory } from '@printerp/shared';
 
@@ -69,9 +70,9 @@ export const FinancePage: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-emerald-400" />
-            Финансы и аналитика мастерской
+            Финансы и аналитика
           </h2>
-          <p className="text-xs text-slate-400">Денежные потоки, маржинальность, себестоимость и расходы</p>
+          <p className="text-xs text-slate-400 mt-1">Денежные потоки, маржинальность, себестоимость и расходы</p>
         </div>
         <button
           onClick={() => setIsExpenseModalOpen(true)}
@@ -108,9 +109,9 @@ export const FinancePage: React.FC = () => {
 
           {/* Net Profit & Margin % */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
-            <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Чистая прибыль</span>
-              <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full">
+            <div className="flex items-center justify-between text-xs text-slate-400 gap-1">
+              <span >Чистая прибыль</span>
+              <span className="text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full whitespace-nowrap shrink-0">
                 {summary.marginPercentage}% маржа
               </span>
             </div>
@@ -125,8 +126,8 @@ export const FinancePage: React.FC = () => {
           {/* Cost of Goods Sold (COGS) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Себестоимость сырья (COGS)</span>
-              <Layers className="w-4 h-4 text-blue-400" />
+              <span>Себестоимость сырья</span>
+              <Layers className="ml-2 w-4 h-4 text-blue-400" />
             </div>
             <p className="text-base font-bold text-slate-200">
               {summary.cogs.toLocaleString('ru-RU')} <span className="text-xs font-medium text-slate-400">сум</span>
@@ -139,7 +140,7 @@ export const FinancePage: React.FC = () => {
           {/* Operating Expenses (OpEx) */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1">
             <div className="flex items-center justify-between text-xs text-slate-400">
-              <span>Операционные расходы (OpEx)</span>
+              <span>Операционные расходы</span>
               <TrendingDown className="w-4 h-4 text-rose-400" />
             </div>
             <p className="text-base font-bold text-rose-400">
@@ -154,7 +155,7 @@ export const FinancePage: React.FC = () => {
 
       {/* Filament Stock Yield & Revenue Potential Card */}
       {summary?.filamentYield && summary.filamentYield.totalStockG > 0 && (
-        <div className="bg-gradient-to-br from-slate-900 via-slate-900 to-indigo-950/40 border border-emerald-500/20 rounded-2xl p-4 space-y-3.5 shadow-lg relative overflow-hidden">
+        <div className="bg-slate-900 border border-emerald-500/30 rounded-2xl p-4 space-y-3.5 shadow-sm relative overflow-hidden">
           <div className="flex items-start justify-between gap-2">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400 shrink-0">
@@ -171,7 +172,7 @@ export const FinancePage: React.FC = () => {
             </div>
 
             {summary.filamentYield.potentialRoiMultiplier > 0 && (
-              <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-lg shrink-0">
+              <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-lg shrink-0 whitespace-nowrap">
                 {summary.filamentYield.potentialRoiMultiplier}x отдача сырья
               </span>
             )}
@@ -242,30 +243,45 @@ export const FinancePage: React.FC = () => {
       <div className="space-y-2">
         <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
           <Calendar className="w-4 h-4 text-blue-400" />
-          Финансовая динамика по месяцам
+          Финансовая динамика по месяцам (сум)
         </h3>
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 space-y-2 text-xs">
-          {monthly?.map((m) => (
-            <div key={m.month} className="flex items-center justify-between py-1 border-b border-slate-800/60 last:border-0">
-              <span className="font-semibold text-slate-300 text-xs w-20">{m.month}</span>
-              <div className="flex items-center space-x-4 text-right">
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Выручка</span>
-                  <span className="font-semibold text-white">{m.revenue.toLocaleString('ru-RU')}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Расход</span>
-                  <span className="font-semibold text-rose-400">-{m.opex.toLocaleString('ru-RU')}</span>
-                </div>
-                <div>
-                  <span className="text-[10px] text-slate-500 block">Прибыль</span>
-                  <span className={`font-bold ${m.netProfit >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
-                    {m.netProfit.toLocaleString('ru-RU')} сум
-                  </span>
-                </div>
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1 text-xs">
+          {/* Table Header Row */}
+          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold text-slate-500 pb-2 border-b border-slate-300/80 px-1">
+            <span className="col-span-3 text-left">Месяц</span>
+            <span className="col-span-3 text-right">Выручка</span>
+            <span className="col-span-3 text-right">Расход</span>
+            <span className="col-span-3 text-right">Прибыль</span>
+          </div>
+
+          {/* Table Data Rows */}
+          <div className="divide-y divide-slate-300/50">
+            {monthly?.map((m) => (
+              <div
+                key={m.month}
+                className="grid grid-cols-12 gap-2 py-2.5 px-1 items-center text-xs tabular-nums"
+              >
+                <span className="col-span-3 font-semibold text-slate-300 text-left font-mono text-[11px]">
+                  {m.month}
+                </span>
+                <span className="col-span-3 font-medium text-white text-right">
+                  {m.revenue.toLocaleString('ru-RU')}
+                </span>
+                <span className="col-span-3 font-medium text-rose-400 text-right">
+                  {m.opex > 0 ? '-' : ''}
+                  {m.opex.toLocaleString('ru-RU')}
+                </span>
+                <span
+                  className={`col-span-3 font-bold text-right ${
+                    m.netProfit >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }`}
+                >
+                  {m.netProfit > 0 ? '+' : ''}
+                  {m.netProfit.toLocaleString('ru-RU')}{' '}
+                </span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
 
@@ -288,7 +304,7 @@ export const FinancePage: React.FC = () => {
               topModels.map((tm, idx) => (
                 <div
                   key={tm.id}
-                  className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition"
+                  className="flex items-center justify-between text-xs bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60 transition"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
@@ -329,32 +345,41 @@ export const FinancePage: React.FC = () => {
             {(!topClients || topClients.length === 0) ? (
               <p className="text-xs text-slate-500 italic py-1">Нет данных по клиентам</p>
             ) : (
-              topClients.map((tc, idx) => (
-                <div
-                  key={tc.id}
-                  className="flex items-center justify-between text-xs bg-slate-950 p-2.5 rounded-xl border border-slate-800/80 hover:border-slate-700 transition"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
-                      #{idx + 1}
-                    </span>
-                    <div className="min-w-0">
-                      <span className="font-semibold text-white block truncate">
-                        {tc.name}
+              topClients.map((tc, idx) => {
+                const instagramHandle = tc.instagramUsername
+                  ? (tc.instagramUsername.startsWith('@') ? tc.instagramUsername : `@${tc.instagramUsername}`)
+                  : null;
+                const displayName = instagramHandle || tc.name || 'Клиент';
+
+                return (
+                  <div
+                    key={tc.id}
+                    className="flex items-center justify-between text-xs bg-slate-950/40 p-2.5 rounded-xl border border-slate-800/60 transition"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
+                        #{idx + 1}
                       </span>
-                      <span className="text-[10px] text-slate-400">
-                        {tc.totalOrders} {tc.totalOrders === 1 ? 'заказ' : (tc.totalOrders >= 2 && tc.totalOrders <= 4 ? 'заказа' : 'заказов')}
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className={`font-semibold block truncate text-white`}>
+                            {displayName}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-slate-400">
+                          {tc.totalOrders} {tc.totalOrders === 1 ? 'заказ' : (tc.totalOrders >= 2 && tc.totalOrders <= 4 ? 'заказа' : 'заказов')}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0 ml-2">
+                      <span className="font-bold text-emerald-400 block">
+                        {tc.totalSpent.toLocaleString('ru-RU')} сум
                       </span>
+                      <span className="text-[9px] text-slate-500 font-semibold uppercase">Выручка</span>
                     </div>
                   </div>
-                  <div className="text-right shrink-0 ml-2">
-                    <span className="font-bold text-white block">
-                      {tc.totalSpent.toLocaleString('ru-RU')} сум
-                    </span>
-                    <span className="text-[9px] text-emerald-400 font-semibold uppercase">Выручка</span>
-                  </div>
-                </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
@@ -415,7 +440,7 @@ export const FinancePage: React.FC = () => {
               return (
                 <div
                   key={tx.id}
-                  className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs hover:border-slate-700 transition"
+                  className="bg-slate-900 border border-slate-800 rounded-2xl p-3 flex items-center justify-between text-xs transition"
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-8 h-8 rounded-xl flex items-center justify-center border ${catInfo.color}`}>
