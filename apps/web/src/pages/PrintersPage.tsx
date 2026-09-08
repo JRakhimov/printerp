@@ -6,6 +6,7 @@ import {
 } from '../hooks/usePrinters';
 import { CreatePrinterModal } from '../components/CreatePrinterModal';
 import { EditPrinterModal } from '../components/EditPrinterModal';
+import { useTimeCycle, formatEstimatedFinish } from '../hooks/useTimeCycle';
 import { PrinterResponse } from '@printerp/shared';
 import {
   Printer as PrinterIcon,
@@ -23,6 +24,7 @@ import {
 } from 'lucide-react';
 
 export const PrintersPage: React.FC = () => {
+  const showFinishTime = useTimeCycle(5000);
   const { data: printers, isLoading, refetch, isRefetching } = usePrinters();
   const deletePrinter = useDeletePrinter();
   const testConnection = useTestPrinterConnection();
@@ -179,6 +181,8 @@ export const PrintersPage: React.FC = () => {
                 ? printer.totalWorkHours
                 : Number((initialH + trackedM / 60).toFixed(1));
 
+            const finishTime = formatEstimatedFinish(remainingMins);
+
             return (
               <div
                 key={printer.id}
@@ -281,15 +285,27 @@ export const PrintersPage: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Remaining Time */}
+                  {/* Remaining Time / Finish Time */}
                   <div className="bg-slate-950/60 border border-slate-800/80 rounded-xl p-2 flex items-center gap-2">
-                    <div className="p-1.5 bg-sky-500/10 rounded-lg text-sky-400">
+                    <div
+                      className={`p-1.5 rounded-lg transition-colors duration-300 ${
+                        isPrinting && remainingMins > 0 && showFinishTime
+                          ? 'bg-indigo-500/10 text-indigo-400'
+                          : 'bg-sky-500/10 text-sky-400'
+                      }`}
+                    >
                       <Clock className="w-3.5 h-3.5" />
                     </div>
-                    <div>
-                      <p className="text-[10px] text-slate-400 font-medium">Осталось</p>
-                      <p className="font-bold text-white">
-                        {isPrinting && remainingMins > 0 ? timeString : '—'}
+                    <div className="min-w-0">
+                      <p className="text-[10px] text-slate-400 font-medium truncate transition-all duration-300">
+                        {isPrinting && remainingMins > 0 && showFinishTime ? 'Завершение' : 'Осталось'}
+                      </p>
+                      <p className="font-bold text-white truncate transition-all duration-300">
+                        {isPrinting && remainingMins > 0
+                          ? showFinishTime
+                            ? finishTime.short
+                            : timeString
+                          : '—'}
                       </p>
                     </div>
                   </div>

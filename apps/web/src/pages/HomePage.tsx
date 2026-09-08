@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useOrders, OrderStatus } from '../hooks/useOrders';
 import { useFinancialSummary } from '../hooks/useFinance';
 import { usePrinters } from '../hooks/usePrinters';
+import { useTimeCycle, formatEstimatedFinish } from '../hooks/useTimeCycle';
 import { getClientDisplayName } from '@printerp/shared';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import {
@@ -21,6 +22,7 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
+  const showFinishTime = useTimeCycle(5000);
   const { data: orders } = useOrders();
   const { data: summary } = useFinancialSummary();
   const { data: printers } = usePrinters();
@@ -201,6 +203,7 @@ export const HomePage: React.FC = () => {
               const hours = Math.floor(remainingMins / 60);
               const mins = remainingMins % 60;
               const timeString = hours > 0 ? `${hours}ч ${mins}м` : `${mins}м`;
+              const finishTime = formatEstimatedFinish(remainingMins);
 
               const statusText = isPrinting
                 ? 'ПЕЧАТЬ'
@@ -273,9 +276,13 @@ export const HomePage: React.FC = () => {
                     </div>
 
                     {isPrinting && remainingMins > 0 && (
-                      <span className="flex items-center gap-1 text-sky-400 font-medium">
+                      <span
+                        className={`flex items-center gap-1 font-medium transition-all duration-300 ${
+                          showFinishTime ? 'text-indigo-400' : 'text-sky-400'
+                        }`}
+                      >
                         <Clock className="w-3 h-3" />
-                        {timeString} осталось
+                        {showFinishTime ? finishTime.withPrefix : `${timeString} осталось`}
                       </span>
                     )}
                   </div>
