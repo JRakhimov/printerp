@@ -19,6 +19,7 @@ import {
   Zap,
   FileCode,
   ShoppingBag,
+  Calendar,
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -113,13 +114,13 @@ export const HomePage: React.FC = () => {
 
       {/* Orders Created Today Block (Shown ONLY if todayOrdersCount > 0) */}
       {todayOrdersCount > 0 && (
-        <div className="bg-slate-900 border border-sky-500/30 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-sky-500/10 border border-sky-500/20 flex items-center justify-center text-sky-400">
               <CalendarPlus className="w-4.5 h-4.5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-semibold text-sky-400/90 tracking-wider block">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">
                 Заказов создано сегодня
               </span>
               <span className="text-sm font-bold text-white">
@@ -132,7 +133,7 @@ export const HomePage: React.FC = () => {
 
       {/* Inventory Stock Asset Block */}
       {summary && (
-        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-3">
             <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
               <Layers className="w-4.5 h-4.5" />
@@ -164,16 +165,16 @@ export const HomePage: React.FC = () => {
 
       {/* Unpaid Client Balance Block (Shown ONLY if unpaidBalance > 0) */}
       {summary && summary.unpaidBalance > 0 && (
-        <div className="bg-slate-900 border border-amber-500/30 rounded-2xl p-3.5 flex items-center justify-between">
+        <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 flex items-center justify-between shadow-sm">
           <div className="flex items-center space-x-3">
-            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
               <DollarSign className="w-4.5 h-4.5" />
             </div>
             <div>
-              <span className="text-[10px] uppercase font-semibold text-amber-400/90 tracking-wider block">
+              <span className="text-[10px] uppercase font-semibold text-slate-400 tracking-wider block">
                 Остаток долга клиентов
               </span>
-              <span className="text-sm font-bold text-amber-400">
+              <span className="text-sm font-bold text-white">
                 {summary.unpaidBalance.toLocaleString('ru-RU')} сум
               </span>
             </div>
@@ -320,9 +321,9 @@ export const HomePage: React.FC = () => {
                   <div className="space-y-0.5 min-w-0 flex-1 pr-2">
                     <div className="flex items-center gap-2">
                       <span className="text-[11px] font-mono text-emerald-400 font-bold">
-                        #100{order.orderNumber}
+                        #{order.orderNumber}
                       </span>
-                      <span className="text-xs font-bold text-white truncate">
+                      <span className="text-xs font-semibold text-white truncate">
                         {getClientDisplayName(order.client)}
                       </span>
                     </div>
@@ -332,8 +333,9 @@ export const HomePage: React.FC = () => {
                   </div>
 
                   <div className="text-right shrink-0">
-                    <span className="text-xs font-bold text-white block">
-                      {price.toLocaleString('ru-RU')} сум
+                    <span className="text-xs font-bold text-emerald-400 block">
+                      {price.toLocaleString('ru-RU')}{' '}
+                      <span className="text-[10px] font-normal text-slate-400">сум</span>
                     </span>
                     <span
                       className={`text-[9px] font-bold px-2 py-0.5 rounded-full border inline-block mt-0.5 ${getStatusBadge(
@@ -355,10 +357,10 @@ export const HomePage: React.FC = () => {
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-3 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-white flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-400" />
+              <AlertTriangle className="w-4 h-4 text-amber-500" />
               Ближайшие дедлайны
             </h2>
-            <span className="text-[10px] text-amber-400/80 font-medium">
+            <span className="text-[10px] text-slate-400 font-medium">
               {upcomingDeadlines.length} {upcomingDeadlines.length === 1 ? 'заказ' : 'заказа'}
             </span>
           </div>
@@ -372,19 +374,25 @@ export const HomePage: React.FC = () => {
                 <div
                   key={order.id}
                   onClick={() => setSelectedOrderId(order.id)}
-                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer transition"
+                  className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex items-center justify-between cursor-pointer transition hover:border-slate-700"
                 >
-                  <div>
-                    <span className="text-[11px] font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
-                    <p className="text-xs font-semibold text-slate-200">
-                      {getClientDisplayName(order.client)} &bull; {order.items.length} {order.items.length === 1 ? 'модель' : 'моделей'}
-                    </p>
+                  <div className="space-y-0.5 min-w-0 flex-1 pr-2">
+                    <span className="text-[11px] font-mono text-emerald-400 font-bold">#{order.orderNumber}</span>
+                    <div className="flex items-center gap-1.5 text-xs truncate">
+                      <span className="font-semibold text-white truncate">
+                        {getClientDisplayName(order.client)}
+                      </span>
+                      <span className="text-[11px] text-slate-400 font-normal shrink-0">
+                        &bull; {order.items.length} {order.items.length === 1 ? 'модель' : 'моделей'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <span className="text-xs font-bold text-amber-400 block">
+                  <div className="text-right shrink-0">
+                    <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg">
+                      <Calendar className="w-3 h-3 text-amber-500 shrink-0" />
                       {new Date(order.deadline!).toLocaleDateString([], { month: 'short', day: 'numeric' })}
                     </span>
-                    <p className={`text-[10px] ${daysLeft <= 1 ? 'text-rose-400 font-bold' : 'text-slate-400'}`}>
+                    <p className={`text-[10px] mt-0.5 ${daysLeft <= 1 ? 'text-rose-500 font-bold' : 'text-slate-400'}`}>
                       {daysLeft <= 0 ? 'Сегодня / Просрочен' : `${daysLeft} дн. осталось`}
                     </p>
                   </div>

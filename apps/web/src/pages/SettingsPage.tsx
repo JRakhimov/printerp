@@ -127,7 +127,11 @@ export const SettingsPage: React.FC = () => {
             <Palette className="w-4 h-4 text-indigo-400" />
             Тема и оформление интерфейса
           </h3>
-          <span className="text-[10px] bg-indigo-500/10 text-indigo-400 font-semibold px-2 py-0.5 rounded-md border border-indigo-500/20">
+          <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+            theme === 'dark'
+              ? 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20'
+              : 'bg-amber-500/15 text-amber-500 border-amber-500/30'
+          }`}>
             {theme === 'dark' ? 'Темная тема' : 'Светлая тема'}
           </span>
         </div>
@@ -138,16 +142,19 @@ export const SettingsPage: React.FC = () => {
             onClick={() => setTheme('dark')}
             className={`p-3 rounded-xl border flex items-center space-x-3 transition ${
               theme === 'dark'
-                ? 'bg-slate-800 border-indigo-500 text-white font-bold ring-1 ring-indigo-500/30'
-                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                ? 'bg-indigo-500/15 border-indigo-500 text-white font-bold ring-1 ring-indigo-500/30 shadow-sm'
+                : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
             }`}
           >
-            <div className="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-amber-400 border border-slate-800 shrink-0">
-              <Moon className="w-4 h-4 text-indigo-400" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition ${
+              theme === 'dark'
+                ? 'bg-indigo-500/20 border-indigo-500/40 text-indigo-400'
+                : 'bg-slate-900 border-slate-800 text-slate-400'
+            }`}>
+              <Moon className="w-4 h-4" />
             </div>
-            <div className="text-left">
-              <span className="text-xs font-bold block">Темная тема</span>
-              <span className="text-[10px] text-slate-400 font-normal">Dark Slate Blue</span>
+            <div className="text-left min-w-0">
+              <span className="text-xs font-bold block truncate">Темная тема</span>
             </div>
           </button>
 
@@ -156,16 +163,19 @@ export const SettingsPage: React.FC = () => {
             onClick={() => setTheme('light')}
             className={`p-3 rounded-xl border flex items-center space-x-3 transition ${
               theme === 'light'
-                ? 'bg-slate-800 border-amber-500 text-white font-bold ring-1 ring-amber-500/30'
-                : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                ? 'bg-amber-500/15 border-amber-500 text-slate-900 font-bold ring-1 ring-amber-500/30 shadow-sm'
+                : 'bg-slate-950/50 border-slate-800/80 text-slate-400 hover:border-slate-700'
             }`}
           >
-            <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-amber-500 border border-slate-200 shrink-0">
-              <Sun className="w-4 h-4 text-amber-500" />
+            <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 border transition ${
+              theme === 'light'
+                ? 'bg-amber-500/20 border-amber-500/40 text-amber-600'
+                : 'bg-slate-900 border-slate-800 text-slate-400'
+            }`}>
+              <Sun className="w-4 h-4" />
             </div>
-            <div className="text-left">
-              <span className="text-xs font-bold block">Светлая тема</span>
-              <span className="text-[10px] text-slate-400 font-normal">Clean Light Gray</span>
+            <div className="text-left min-w-0">
+              <span className="text-xs font-bold block truncate">Светлая тема</span>
             </div>
           </button>
         </div>
@@ -265,14 +275,14 @@ export const SettingsPage: React.FC = () => {
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <div>
             <h3 className="text-xs font-bold text-white flex items-center gap-2">
-              <Users className="w-4 h-4 text-amber-400" />
-              Список доступа команды и роли
+              <Users className="w-4 h-4 text-blue-400" />
+              Список пользователей
             </h3>
-            <p className="text-[11px] text-slate-400">Telegram-аккаунты с доступом к системе PrintERP</p>
+            <p className="text-[11px] text-slate-400">Telegram-аккаунты с доступом к системе</p>
           </div>
           <button
             onClick={() => setIsAddUserModalOpen(true)}
-            className="flex items-center space-x-1.5 bg-amber-600 hover:bg-amber-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-amber-500/20"
+            className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-blue-500/20"
           >
             <UserPlus className="w-3.5 h-3.5" />
             <span>Добавить пользователя</span>
@@ -281,7 +291,7 @@ export const SettingsPage: React.FC = () => {
 
         {isUsersLoading ? (
           <div className="py-8 flex justify-center text-slate-400">
-            <Loader2 className="w-5 h-5 animate-spin text-amber-500" />
+            <Loader2 className="w-5 h-5 animate-spin text-blue-500" />
           </div>
         ) : users?.length === 0 ? (
           <div className="bg-slate-950 border border-slate-800 rounded-xl p-4 text-center text-slate-500 text-xs">

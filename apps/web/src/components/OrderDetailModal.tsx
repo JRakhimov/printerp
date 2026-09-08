@@ -244,7 +244,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   const handleDeleteOrder = async () => {
     if (!order) return;
-    if (window.confirm(`Вы уверены, что хотите отменить/удалить заказ #100${order.orderNumber}?`)) {
+    if (window.confirm(`Вы уверены, что хотите отменить/удалить заказ #${order.orderNumber}?`)) {
       try {
         await deleteOrder.mutateAsync(order.id);
         onClose();

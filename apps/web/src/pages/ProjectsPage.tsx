@@ -136,7 +136,7 @@ export const ProjectsPage: React.FC = () => {
                     className="inline-flex items-center space-x-1 bg-slate-950 px-2 py-0.5 rounded-lg border border-slate-800 text-[11px] text-slate-300"
                   >
                     <span
-                      className="w-2 h-2 rounded-full inline-block"
+                      className="w-2 h-2 rounded-full inline-block border border-slate-300 dark:border-white/20"
                       style={{ backgroundColor: pf.filament?.color || '#3b82f6' }}
                     />
                     <span>{pf.filament?.name || 'Филамент'}</span>

@@ -380,7 +380,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex flex-wrap items-center gap-1.5 min-w-0">
                             <span className="text-xs font-bold text-indigo-400 shrink-0">
-                              Заказ #100{ord.orderNumber}
+                              Заказ #{ord.orderNumber}
                             </span>
                             <span
                               className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${

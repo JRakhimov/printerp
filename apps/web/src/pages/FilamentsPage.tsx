@@ -105,7 +105,7 @@ export const FilamentsPage: React.FC<FilamentsPageProps> = ({ onBack }) => {
             <div className="flex items-start justify-between gap-3">
               <div className="flex items-center space-x-2.5">
                 <span
-                  className="w-3.5 h-3.5 rounded-full border border-white/20 shadow-sm shrink-0"
+                  className="w-3.5 h-3.5 rounded-full border border-slate-300 dark:border-white/20 shadow-sm shrink-0"
                   style={{ backgroundColor: fil.color || '#3b82f6' }}
                 />
                 <div>

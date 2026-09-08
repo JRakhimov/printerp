@@ -291,7 +291,7 @@ export const FinancePage: React.FC = () => {
         </h3>
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3.5 space-y-1 text-xs">
           {/* Table Header Row */}
-          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold text-slate-500 pb-2 border-b border-slate-300/80 px-1">
+          <div className="grid grid-cols-12 gap-2 text-[11px] font-semibold text-slate-500 pb-2 border-b border-slate-200 dark:border-slate-800 px-1">
             <span className="col-span-3 text-left">Месяц</span>
             <span className="col-span-3 text-right">Выручка</span>
             <span className="col-span-3 text-right">Расход</span>
@@ -299,7 +299,7 @@ export const FinancePage: React.FC = () => {
           </div>
 
           {/* Table Data Rows */}
-          <div className="divide-y divide-slate-300/50">
+          <div className="divide-y divide-slate-200 dark:divide-slate-800">
             {monthly?.map((m) => (
               <div
                 key={m.month}
@@ -547,7 +547,7 @@ export const FinancePage: React.FC = () => {
                         <span className="font-bold text-white">{catInfo.label}</span>
                         {tx.order && (
                           <span className="text-[10px] text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">
-                            Заказ #100{tx.order.orderNumber}
+                            Заказ #{tx.order.orderNumber}
                           </span>
                         )}
                       </div>

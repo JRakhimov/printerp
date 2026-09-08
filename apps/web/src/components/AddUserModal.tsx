@@ -45,7 +45,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 mb-8 min-w-0 max-w-full overflow-hidden">
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
-            <UserPlus className="w-4 h-4 text-amber-400" />
+            <UserPlus className="w-4 h-4 text-blue-400" />
             Добавить сотрудника в команду
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
@@ -61,7 +61,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
             <input
               {...register('telegramId')}
               placeholder="напр. 123456789"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
             />
             {errors.telegramId && <p className="text-[11px] text-red-400 mt-1">{errors.telegramId.message}</p>}
           </div>
@@ -74,7 +74,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
             <input
               {...register('telegramUsername')}
               placeholder="напр. operator_ivan"
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
             />
           </div>
 
@@ -84,7 +84,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
               <input
                 {...register('firstName')}
                 placeholder="Иван"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
               />
             </div>
             <div>
@@ -92,19 +92,19 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
               <input
                 {...register('lastName')}
                 placeholder="Иванов"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-amber-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-blue-500 focus:outline-none"
               />
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-              <Shield className="w-3.5 h-3.5 text-amber-400" />
+              <Shield className="w-3.5 h-3.5 text-blue-400" />
               Роль *
             </label>
             <select
               {...register('role')}
-              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-amber-500 focus:outline-none"
+              className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-blue-500 focus:outline-none"
             >
               <option value={Role.USER}>СОТРУДНИК (Оператор мастерской)</option>
               <option value={Role.OWNER}>ВЛАДЕЛЕЦ (Полный доступ к настройкам)</option>
@@ -122,7 +122,7 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
             <button
               type="submit"
               disabled={createUser.isPending}
-              className="px-4 py-2 rounded-xl text-xs font-semibold bg-amber-600 hover:bg-amber-500 text-white flex items-center gap-1.5 transition shadow-md shadow-amber-500/20"
+              className="px-4 py-2 rounded-xl text-xs font-semibold bg-blue-600 hover:bg-blue-500 text-white flex items-center gap-1.5 transition shadow-md shadow-blue-500/20"
             >
               {createUser.isPending && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
               <span>Добавить в список</span>
