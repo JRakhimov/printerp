@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useFilaments, useDeleteFilament, Filament } from '../hooks/useFilaments';
 import { CreateFilamentModal } from '../components/CreateFilamentModal';
 import { EditFilamentModal } from '../components/EditFilamentModal';
+import { ScrapFilamentModal } from '../components/ScrapFilamentModal';
 import {
   Palette,
   Plus,
@@ -10,6 +11,7 @@ import {
   Loader2,
   ChevronLeft,
   Pencil,
+  MinusCircle,
 } from 'lucide-react';
 
 export interface FilamentsPageProps {
@@ -20,6 +22,8 @@ export const FilamentsPage: React.FC<FilamentsPageProps> = ({ onBack }) => {
   const [search, setSearch] = useState('');
   const [isFilamentModalOpen, setIsFilamentModalOpen] = useState(false);
   const [selectedFilament, setSelectedFilament] = useState<Filament | null>(null);
+  const [isScrapModalOpen, setIsScrapModalOpen] = useState(false);
+  const [scrapFilamentId, setScrapFilamentId] = useState<string | undefined>(undefined);
 
   const filamentsQuery = useFilaments(search);
   const deleteFilament = useDeleteFilament();
@@ -40,18 +44,31 @@ export const FilamentsPage: React.FC<FilamentsPageProps> = ({ onBack }) => {
             className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>Назад в меню</span>
+            <span>Назад</span>
           </button>
         ) : (
           <div />
         )}
-        <button
-          onClick={() => setIsFilamentModalOpen(true)}
-          className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-indigo-500/20"
-        >
-          <Plus className="w-3.5 h-3.5" />
-          <span>Добавить филамент</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setScrapFilamentId(undefined);
+              setIsScrapModalOpen(true);
+            }}
+            className="flex items-center space-x-1.5 bg-amber-500/10 hover:bg-amber-500/20 text-orange-300 border border-amber-500/30 text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-sm"
+            title="Списать продувку Bambu Lab, калибровку или брак"
+          >
+            <MinusCircle className="w-3.5 h-3.5" />
+            <span>Списать</span>
+          </button>
+          <button
+            onClick={() => setIsFilamentModalOpen(true)}
+            className="flex items-center space-x-1.5 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-indigo-500/20"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Добавить филамент</span>
+          </button>
+        </div>
       </div>
 
       <div className="flex items-center justify-between">
@@ -107,6 +124,17 @@ export const FilamentsPage: React.FC<FilamentsPageProps> = ({ onBack }) => {
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
+                    setScrapFilamentId(fil.id);
+                    setIsScrapModalOpen(true);
+                  }}
+                  className="text-slate-400 hover:text-amber-400 p-1"
+                  title="Списать пластик с катушки (продувка/брак)"
+                >
+                  <MinusCircle className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSelectedFilament(fil);
                   }}
                   className="text-slate-400 hover:text-indigo-400 p-1"
@@ -151,6 +179,14 @@ export const FilamentsPage: React.FC<FilamentsPageProps> = ({ onBack }) => {
         filament={selectedFilament}
         isOpen={!!selectedFilament}
         onClose={() => setSelectedFilament(null)}
+      />
+      <ScrapFilamentModal
+        isOpen={isScrapModalOpen}
+        onClose={() => {
+          setIsScrapModalOpen(false);
+          setScrapFilamentId(undefined);
+        }}
+        defaultFilamentId={scrapFilamentId}
       />
     </div>
   );

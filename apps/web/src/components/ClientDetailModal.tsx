@@ -114,8 +114,8 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
   const unpaidBalance = Math.max(0, totalSpent - totalPaid);
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overflow-x-hidden touch-pan-y overscroll-y-contain">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 mb-8 min-w-0 max-w-full overflow-hidden">
         {isLoading || !client ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -123,22 +123,22 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
         ) : (
           <>
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div className="flex items-center space-x-2.5">
-                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-2">
+              <div className="flex items-center space-x-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center text-indigo-400 shrink-0">
                   <User className="w-5 h-5" />
                 </div>
-                <div>
-                  <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                <div className="min-w-0">
+                  <h3 className="text-sm font-bold text-white flex items-center gap-2 truncate">
                     {getClientDisplayName(client)}
                   </h3>
-                  <p className="text-[11px] text-slate-400">
+                  <p className="text-[11px] text-slate-400 truncate">
                     Клиент с {new Date(client.createdAt).toLocaleDateString('ru-RU')}
                   </p>
                 </div>
               </div>
 
-              <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
+              <button onClick={onClose} className="text-slate-400 hover:text-white p-1 shrink-0">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -147,7 +147,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
             <div className="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
               {/* Row 1: Instagram | City */}
               <div className="grid grid-cols-2 gap-2">
-                <div className="flex items-center space-x-1.5 overflow-hidden">
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
                   <Instagram className="w-3.5 h-3.5 text-pink-400 shrink-0" />
                   {client.instagramUsername ? (
                     <a
@@ -159,10 +159,10 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       @{client.instagramUsername.replace(/^@/, '')}
                     </a>
                   ) : (
-                    <span className="text-slate-500 italic">Instagram не указан</span>
+                    <span className="text-slate-500 italic truncate">Instagram не указан</span>
                   )}
                 </div>
-                <div className="flex items-center space-x-1.5 overflow-hidden">
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
                   <MapPin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                   <span className="text-slate-200 truncate">{client.city || 'Город не указан'}</span>
                 </div>
@@ -170,25 +170,25 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
 
               {/* Row 2: Full Name | Phone */}
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-900">
-                <div className="flex items-center space-x-1.5 overflow-hidden">
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
                   <User className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                   <span className="text-slate-200 truncate">{client.name || 'Клиент без имени'}</span>
                 </div>
-                <div className="flex items-center space-x-1.5 overflow-hidden">
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
                   <Phone className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   {client.phone ? (
                     <a href={`tel:${client.phone}`} className="text-emerald-400 hover:underline truncate font-medium">
                       {client.phone}
                     </a>
                   ) : (
-                    <span className="text-slate-500 italic">Телефон не указан</span>
+                    <span className="text-slate-500 italic truncate">Телефон не указан</span>
                   )}
                 </div>
               </div>
 
               {/* Row 3: Telegram | Source */}
               <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-900">
-                <div className="flex items-center space-x-1.5 overflow-hidden">
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
                   <Send className="w-3.5 h-3.5 text-sky-400 shrink-0" />
                   {client.telegramUsername ? (
                     <a
@@ -200,64 +200,66 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       @{client.telegramUsername.replace(/^@/, '')}
                     </a>
                   ) : (
-                    <span className="text-slate-500 italic">Telegram не указан</span>
+                    <span className="text-slate-500 italic truncate">Telegram не указан</span>
                   )}
                 </div>
-                <div className="flex items-center space-x-1.5 overflow-hidden">
-                    <span className="text-[10px] font-semibold text-slate-400">Источник:</span>
-                    <span className="text-slate-400">{client.source}</span>
+                <div className="flex items-center space-x-1.5 overflow-hidden min-w-0">
+                  <span className="text-[10px] font-semibold text-slate-400 shrink-0">Источник:</span>
+                  <span className="text-slate-400 truncate">{client.source}</span>
                 </div>
               </div>
             </div>
 
             {/* Financial Activity Summary */}
             <div className="grid grid-cols-3 gap-2 bg-slate-950 p-3 rounded-xl border border-slate-800 text-xs">
-              <div>
-                <span className="text-[10px] text-slate-400 block">Всего заказов</span>
+              <div className="min-w-0">
+                <span className="text-[10px] text-slate-400 block truncate">Всего заказов</span>
                 <span className="font-bold text-white flex items-center gap-1 mt-0.5">
-                  <ShoppingBag className="w-3.5 h-3.5 text-indigo-400" />
-                  {totalOrders}
+                  <ShoppingBag className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                  <span className="truncate">{totalOrders}</span>
                 </span>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block">Выручка за всё время</span>
-                <span className="font-bold text-emerald-400 flex items-center gap-1 mt-0.5">
-                  {totalSpent.toLocaleString('ru-RU')} сум
-                </span>
+              <div className="min-w-0">
+                <span className="text-[10px] text-slate-400 block truncate">Выручка</span>
+                <div className="font-bold text-emerald-400 flex items-baseline gap-1 mt-0.5 min-w-0">
+                  <span className="truncate text-xs">{totalSpent.toLocaleString('ru-RU')}</span>
+                  <span className="text-[10px] text-emerald-500/80 shrink-0">сум</span>
+                </div>
               </div>
-              <div>
-                <span className="text-[10px] text-slate-400 block">Неоплаченный долг</span>
-                <span
-                  className={`font-bold flex items-center gap-1 mt-0.5 ${
+              <div className="min-w-0">
+                <span className="text-[10px] text-slate-400 block truncate">Долг</span>
+                <div
+                  className={`font-bold flex items-baseline gap-1 mt-0.5 min-w-0 ${
                     unpaidBalance > 0 ? 'text-amber-400' : 'text-slate-400'
                   }`}
                 >
-                  {unpaidBalance.toLocaleString('ru-RU')} сум
-                </span>
+                  <span className="truncate text-xs">{unpaidBalance.toLocaleString('ru-RU')}</span>
+                  <span className="text-[10px] text-slate-500 shrink-0">сум</span>
+                </div>
               </div>
             </div>
 
             {/* Editable Profile Fields */}
             <div className="space-y-3 bg-slate-950/60 p-3.5 rounded-xl border border-slate-800">
               <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-blue-400" />
+                <User className="w-3.5 h-3.5 text-blue-400 shrink-0" />
                 Редактирование профиля клиента
               </h4>
 
               {/* Row 1: Instagram | City */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Instagram</label>
                   <input
                     type="text"
                     value={instagramUsername}
                     onChange={(e) => setInstagramUsername(e.target.value)}
                     placeholder="@insta_handle"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Город / Область</label>
                   <CityInput
                     id="edit-client-city"
@@ -270,49 +272,49 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
               </div>
 
               {/* Row 2: Full Name | Phone */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Имя / ФИО</label>
                   <input
                     type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="напр. Александр (необязательно)"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Телефон</label>
                   <input
                     type="text"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+998 90 123-45-67"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
               </div>
 
               {/* Row 3: Telegram | Source */}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3 text-xs">
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Telegram</label>
                   <input
                     type="text"
                     value={telegramUsername}
                     onChange={(e) => setTelegramUsername(e.target.value)}
                     placeholder="@username"
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
+                    className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white placeholder-slate-500 focus:border-indigo-500 focus:outline-none"
                   />
                 </div>
 
-                <div>
+                <div className="min-w-0">
                   <label className="block text-[11px] font-semibold text-slate-300 mb-1">Источник клиента</label>
                   <select
                     value={source}
                     onChange={(e) => setSource(e.target.value as ClientSource)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
+                    className="w-full min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none"
                   >
                     <option value={ClientSource.INSTAGRAM}>Instagram</option>
                     <option value={ClientSource.TELEGRAM}>Telegram</option>
@@ -373,22 +375,22 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                       <div
                         key={ord.id}
                         onClick={() => onSelectOrder && onSelectOrder(ord.id)}
-                        className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 transition cursor-pointer group"
+                        className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2 transition cursor-pointer group hover:border-slate-700"
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            <span className="text-xs font-bold text-indigo-400">
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex flex-wrap items-center gap-1.5 min-w-0">
+                            <span className="text-xs font-bold text-indigo-400 shrink-0">
                               Заказ #100{ord.orderNumber}
                             </span>
                             <span
-                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                                 statusColors[ord.status] || 'bg-slate-800 text-slate-300'
                               }`}
                             >
                               {ord.status}
                             </span>
                             <span
-                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
+                              className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
                                 paymentStatusColors[ord.paymentStatus] || 'bg-slate-800 text-slate-300'
                               }`}
                             >
@@ -396,28 +398,28 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                             </span>
                           </div>
 
-                          <div className="flex items-center space-x-1 text-slate-400 group-hover:text-indigo-400 transition">
-                            <span className="text-xs font-bold text-white">
+                          <div className="flex items-center space-x-1 text-slate-400 group-hover:text-indigo-400 transition shrink-0 self-start mt-0.5">
+                            <span className="text-xs font-bold text-white whitespace-nowrap">
                               {price.toLocaleString('ru-RU')} сум
                             </span>
-                            <ChevronRight className="w-3.5 h-3.5" />
+                            <ChevronRight className="w-3.5 h-3.5 shrink-0" />
                           </div>
                         </div>
 
                         {/* Order Items Snapshot List */}
                         {ord.items && ord.items.length > 0 && (
-                          <div className="text-[11px] text-slate-300 bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80">
+                          <div className="text-[11px] text-slate-300 bg-slate-900/60 px-2.5 py-1.5 rounded-lg border border-slate-800/80 flex flex-wrap gap-x-3 gap-y-1">
                             {ord.items.map((it) => (
-                              <span key={it.id} className="mr-3 inline-block">
-                                • {it.projectNameSnapshot}{' '}
-                                <strong className="text-indigo-300">x{it.quantity}</strong>
+                              <span key={it.id} className="inline-flex items-center gap-1 break-words">
+                                <span>• {it.projectNameSnapshot}</span>
+                                <strong className="text-indigo-300 shrink-0">x{it.quantity}</strong>
                               </span>
                             ))}
                           </div>
                         )}
 
                         <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1">
-                          <span className="flex items-center gap-1">
+                          <span className="flex items-center gap-1 shrink-0">
                             <Calendar className="w-3 h-3 text-slate-600" />
                             {new Date(ord.createdAt).toLocaleDateString('ru-RU', {
                               day: 'numeric',
@@ -427,7 +429,7 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
                           </span>
 
                           {ord.deadline && (
-                            <span className="text-slate-400">
+                            <span className="text-slate-400 truncate ml-2">
                               Дедлайн:{' '}
                               <strong className="text-slate-300">
                                 {new Date(ord.deadline).toLocaleDateString('ru-RU')}

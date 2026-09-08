@@ -8,6 +8,10 @@ import {
   TopModelMetric,
   TopClientMetric,
   FilamentYieldMetric,
+  ScrapLossMetric,
+  TopScrapModelMetric,
+  ScrapReason,
+  ScrapReasonLabels,
   getClientDisplayName,
 } from '@printerp/shared';
 
@@ -105,20 +109,45 @@ export class FinanceService {
         payments: {
           select: { amount: true },
         },
+        items: {
+          select: {
+            quantity: true,
+            project: {
+              select: {
+                weightG: true,
+                projectFilaments: {
+                  select: { grams: true },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
     let totalRevenue = 0;
     let totalCogs = 0;
     let totalPaymentsReceived = 0;
+    let totalProductionG = 0;
 
     for (const ord of activeOrders) {
       const price = ord.finalPrice > 0 ? ord.finalPrice : ord.calculatedPrice;
       totalRevenue += price;
       totalCogs += ord.calculatedCost;
 
-      const orderPaid = ord.payments.reduce((sum, p) => sum + p.amount, 0);
+      const orderPaid = ord.payments ? ord.payments.reduce((sum: number, p: any) => sum + p.amount, 0) : 0;
       totalPaymentsReceived += orderPaid;
+
+      if ((ord as any).items) {
+        for (const it of (ord as any).items) {
+          const qty = it.quantity || 1;
+          let w = it.project?.weightG || 0;
+          if (!w && it.project?.projectFilaments?.length) {
+            w = it.project.projectFilaments.reduce((sum: number, pf: any) => sum + pf.grams, 0);
+          }
+          totalProductionG += w * qty;
+        }
+      }
     }
 
     const unpaidBalance = Math.max(0, totalRevenue - totalPaymentsReceived);
@@ -209,6 +238,28 @@ export class FinanceService {
       potentialRoiMultiplier,
     };
 
+    // 5. Scrap & Defect Losses
+    const scrapAgg = await this.prisma.scrapRecord.aggregate({
+      _sum: { grams: true, cost: true },
+      _count: { id: true },
+    });
+    const totalScrapG = scrapAgg._sum.grams || 0;
+    const totalScrapCost = scrapAgg._sum.cost || 0;
+    const incidentsCount = scrapAgg._count.id || 0;
+
+    const totalConsumedMaterialG = totalProductionG + totalScrapG;
+    const scrapRatePercentage =
+      totalConsumedMaterialG > 0
+        ? Math.round((totalScrapG / totalConsumedMaterialG) * 100 * 10) / 10
+        : 0;
+
+    const scrapLoss: ScrapLossMetric = {
+      totalScrapG,
+      totalScrapCost,
+      incidentsCount,
+      scrapRatePercentage,
+    };
+
     return {
       revenue: netRevenue,
       cogs: totalCogs,
@@ -218,6 +269,7 @@ export class FinanceService {
       unpaidBalance,
       inventoryValuation,
       filamentYield,
+      scrapLoss,
     };
   }
 
@@ -349,5 +401,83 @@ export class FinanceService {
     });
 
     return metrics.sort((a, b) => b.totalSpent - a.totalSpent).slice(0, 5);
+  }
+
+  async getTopScrapModels(): Promise<TopScrapModelMetric[]> {
+    const scrapRecords = await this.prisma.scrapRecord.findMany({
+      where: {
+        orderItemId: { not: null },
+      },
+      include: {
+        orderItem: true,
+      },
+    });
+
+    if (scrapRecords.length === 0) {
+      return [];
+    }
+
+    const modelMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        defectsCount: number;
+        totalGrams: number;
+        totalCost: number;
+        reasonCounts: Record<string, number>;
+      }
+    >();
+
+    for (const scrap of scrapRecords) {
+      const name = scrap.orderItem?.projectNameSnapshot || 'Неизвестная деталь';
+      const key = scrap.orderItem?.projectId || name;
+
+      let entry = modelMap.get(key);
+      if (!entry) {
+        entry = {
+          id: key,
+          name,
+          defectsCount: 0,
+          totalGrams: 0,
+          totalCost: 0,
+          reasonCounts: {},
+        };
+        modelMap.set(key, entry);
+      }
+
+      entry.defectsCount += 1;
+      entry.totalGrams += scrap.grams;
+      entry.totalCost += scrap.cost;
+      entry.reasonCounts[scrap.reason] = (entry.reasonCounts[scrap.reason] || 0) + 1;
+    }
+
+    const result: TopScrapModelMetric[] = [];
+    for (const entry of modelMap.values()) {
+      let topReasonKey = '';
+      let maxCount = 0;
+      for (const [r, count] of Object.entries(entry.reasonCounts)) {
+        if (count > maxCount) {
+          maxCount = count;
+          topReasonKey = r;
+        }
+      }
+      const topReason = topReasonKey
+        ? ScrapReasonLabels[topReasonKey as ScrapReason] || topReasonKey
+        : undefined;
+
+      result.push({
+        id: entry.id,
+        name: entry.name,
+        defectsCount: entry.defectsCount,
+        totalGrams: entry.totalGrams,
+        totalCost: entry.totalCost,
+        topReason,
+      });
+    }
+
+    result.sort((a, b) => b.defectsCount - a.defectsCount || b.totalCost - a.totalCost);
+
+    return result.slice(0, 5);
   }
 }

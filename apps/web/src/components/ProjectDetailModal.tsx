@@ -174,8 +174,8 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
   const effectiveZIndex = zIndex || (onBack ? 'z-[60]' : 'z-50');
 
   return (
-    <div className={`fixed inset-0 ${effectiveZIndex} bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain`}>
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
+    <div className={`fixed inset-0 ${effectiveZIndex} bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overflow-x-hidden touch-pan-y overscroll-y-contain`}>
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 mb-8 min-w-0 max-w-full overflow-hidden">
         {isLoading || !project ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-indigo-500" />
@@ -207,7 +207,6 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 hover:bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/20 transition"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    <span>Редактировать</span>
                   </button>
                 ) : (
                   <button

@@ -29,6 +29,10 @@ describe('FinanceService', () => {
     project: {
       findMany: jest.fn(),
     },
+    scrapRecord: {
+      aggregate: jest.fn(),
+      findMany: jest.fn(),
+    },
   };
 
   beforeEach(async () => {
@@ -134,6 +138,11 @@ describe('FinanceService', () => {
         { defaultPrice: 50000, weightG: 50, projectFilaments: [] },
       ]);
 
+      mockPrismaService.scrapRecord.aggregate.mockResolvedValue({
+        _sum: { grams: 100, cost: 25000 },
+        _count: { id: 2 },
+      });
+
       const summary = await service.getSummary();
 
       expect(summary.revenue).toBe(200000); // 120000 + 80000
@@ -145,6 +154,54 @@ describe('FinanceService', () => {
       expect(summary.inventoryValuation).toBe(250000);
       expect(summary.filamentYield?.totalStockG).toBe(1000);
       expect(summary.filamentYield?.potentialRevenue).toBe(1000000); // 20 models * 50000
+      expect(summary.scrapLoss?.totalScrapG).toBe(100);
+      expect(summary.scrapLoss?.totalScrapCost).toBe(25000);
+      expect(summary.scrapLoss?.incidentsCount).toBe(2);
+      expect(summary.scrapLoss?.scrapRatePercentage).toBeDefined();
+    });
+  });
+
+  describe('getTopScrapModels', () => {
+    it('should return top defective models ranked by defects count', async () => {
+      mockPrismaService.scrapRecord.findMany.mockResolvedValue([
+        {
+          orderItemId: 'item-1',
+          grams: 60,
+          cost: 15000,
+          reason: 'LAYER_SHIFT',
+          orderItem: { projectId: 'p-1', projectNameSnapshot: 'Dragon' },
+        },
+        {
+          orderItemId: 'item-1',
+          grams: 60,
+          cost: 15000,
+          reason: 'LAYER_SHIFT',
+          orderItem: { projectId: 'p-1', projectNameSnapshot: 'Dragon' },
+        },
+        {
+          orderItemId: 'item-2',
+          grams: 30,
+          cost: 8000,
+          reason: 'BED_ADHESION',
+          orderItem: { projectId: 'p-2', projectNameSnapshot: 'Vase' },
+        },
+      ]);
+
+      const top = await service.getTopScrapModels();
+
+      expect(top).toHaveLength(2);
+      expect(top[0].name).toBe('Dragon');
+      expect(top[0].defectsCount).toBe(2);
+      expect(top[0].totalGrams).toBe(120);
+      expect(top[0].totalCost).toBe(30000);
+      expect(top[1].name).toBe('Vase');
+      expect(top[1].defectsCount).toBe(1);
+    });
+
+    it('should return empty array if no scrap records exist', async () => {
+      mockPrismaService.scrapRecord.findMany.mockResolvedValue([]);
+      const top = await service.getTopScrapModels();
+      expect(top).toEqual([]);
     });
   });
 });

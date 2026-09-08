@@ -49,8 +49,35 @@ export enum ExpenseCategory {
   SOFT = 'SOFT',
   DELIVERY = 'DELIVERY',
   ADS = 'ADS',
+  SCRAP = 'SCRAP',
   OTHER = 'OTHER',
 }
+
+export enum ScrapReason {
+  LAYER_SHIFT = 'LAYER_SHIFT',
+  BED_ADHESION = 'BED_ADHESION',
+  CLOG = 'CLOG',
+  WARPING = 'WARPING',
+  STRINGING = 'STRINGING',
+  DIMENSIONAL_ERROR = 'DIMENSIONAL_ERROR',
+  PURGE_WASTE = 'PURGE_WASTE',
+  CALIBRATION = 'CALIBRATION',
+  MODEL_ERROR = 'MODEL_ERROR',
+  OTHER = 'OTHER',
+}
+
+export const ScrapReasonLabels: Record<ScrapReason, string> = {
+  [ScrapReason.LAYER_SHIFT]: 'Сдвиг слоев (Layer shift)',
+  [ScrapReason.BED_ADHESION]: 'Отрыв от стола (Bed adhesion)',
+  [ScrapReason.CLOG]: 'Засор сопла / недоэкструзия',
+  [ScrapReason.WARPING]: 'Усадка / деформация (Warping)',
+  [ScrapReason.STRINGING]: 'Паутина / наплывы',
+  [ScrapReason.DIMENSIONAL_ERROR]: 'Ошибка геометрии / размеров',
+  [ScrapReason.PURGE_WASTE]: 'Продувка / слив пластика (Poop)',
+  [ScrapReason.CALIBRATION]: 'Калибровка / тесты',
+  [ScrapReason.MODEL_ERROR]: 'Ошибка 3D-модели / слайсинга',
+  [ScrapReason.OTHER]: 'Другое',
+};
 
 export enum PrinterManufacturer {
   BAMBU_LAB = 'BAMBU_LAB',

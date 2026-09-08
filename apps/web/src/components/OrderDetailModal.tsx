@@ -13,6 +13,8 @@ import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
 import { CityInput } from './CityInput';
 import { ProjectDetailModal } from './ProjectDetailModal';
+import { RecordDefectModal } from './RecordDefectModal';
+import { useDeleteScrapRecord, ScrapReasonLabels } from '../hooks/useScrap';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
   X,
@@ -23,6 +25,7 @@ import {
   User,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Loader2,
   Pencil,
   Eye,
@@ -56,10 +59,22 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const updateOrder = useUpdateOrder();
   const updateStatus = useUpdateOrderStatus();
   const deleteOrder = useDeleteOrder();
+  const deleteScrap = useDeleteScrapRecord();
 
   const [isEditing, setIsEditing] = useState<boolean>(initialMode === 'edit');
   const [statusComment, setStatusComment] = useState('');
   const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
+  const [defectItem, setDefectItem] = useState<any>(null);
+
+  const handleDeleteScrap = async (scrapId: string) => {
+    if (confirm('Отменить фиксацию брака и вернуть списанный вес филамента на склад?')) {
+      try {
+        await deleteScrap.mutateAsync(scrapId);
+      } catch (err: any) {
+        alert(err?.response?.data?.message || 'Ошибка при отмене брака');
+      }
+    }
+  };
 
   // Editable form fields
   const [editClientId, setEditClientId] = useState('');
@@ -252,12 +267,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
   const totalPaid = order?.payments?.reduce((acc, p) => acc + p.amount, 0) || 0;
   const remainingPayment = (order?.finalPrice || 0) - totalPaid;
-  const profit = (order?.finalPrice || 0) - (order?.calculatedCost || 0);
+  const scrapTotalCost = (order?.scrapRecords || []).reduce((acc, s) => acc + s.cost, 0);
+  const totalOrderCost = (order?.calculatedCost || 0) + scrapTotalCost;
+  const profit = (order?.finalPrice || 0) - totalOrderCost;
   const marginPercentage = (order?.finalPrice || 0) > 0 ? Math.round((profit / (order?.finalPrice || 1)) * 100) : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overscroll-contain">
-      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-5 shadow-2xl space-y-4 mb-8">
+    <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-start justify-center p-3 sm:p-4 pt-[max(1.5rem,var(--tg-content-safe-area-inset-top,0px),calc(env(safe-area-inset-top,0px)+3.5rem))] pb-20 overflow-y-auto overflow-x-hidden touch-pan-y overscroll-y-contain">
+      <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-2xl p-4 sm:p-5 shadow-2xl space-y-4 mb-8 min-w-0 max-w-full overflow-hidden">
         {isLoading || !order ? (
           <div className="py-12 flex justify-center text-slate-400">
             <Loader2 className="w-6 h-6 animate-spin text-emerald-500" />
@@ -265,12 +282,12 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
         ) : (
           <>
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-              <div>
-                <span className="text-xs font-mono text-emerald-400 font-bold">#100{order.orderNumber}</span>
-                <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                  <User className="w-4 h-4 text-blue-400" />
-                  {isEditing ? 'Редактирование заказа' : getClientDisplayName(order.client)}
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3 gap-2">
+              <div className="min-w-0 pr-2">
+                <span className="text-xs font-mono text-emerald-400 font-bold">#{order.orderNumber}</span>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2 truncate">
+                  <User className="w-4 h-4 text-blue-400 shrink-0" />
+                  <span className="truncate">{isEditing ? 'Редактирование заказа' : getClientDisplayName(order.client)}</span>
                 </h3>
               </div>
               <div className="flex items-center space-x-2">
@@ -280,7 +297,6 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     className="flex items-center space-x-1 text-xs text-emerald-400 hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 px-2.5 py-1 rounded-lg border border-emerald-500/20 transition"
                   >
                     <Pencil className="w-3.5 h-3.5" />
-                    <span>Редактировать</span>
                   </button>
                 ) : (
                   <button
@@ -331,7 +347,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       Модели и позиции ({order.items.length})
                     </span>
                     <span className="text-[10px] text-slate-500">
-                      Нажмите на модель для перехода
+                      Нажмите чтобы перейти
                     </span>
                   </div>
                   <div className="space-y-2">
@@ -374,18 +390,84 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             </p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <span className="text-xs font-bold text-white block">
-                            {item.totalPrice.toLocaleString('ru-RU')} сум
-                          </span>
-                          <span className="text-[10px] text-slate-400">
-                            Себест: {item.totalCost.toLocaleString('ru-RU')} сум
-                          </span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <div className="text-right">
+                            <span className="text-xs font-bold text-white block">
+                              {item.totalPrice.toLocaleString('ru-RU')} сум
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              Себест: {item.totalCost.toLocaleString('ru-RU')} сум
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDefectItem(item);
+                            }}
+                            className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition"
+                            title="Зафиксировать брак детали"
+                          >
+                            <AlertTriangle className="w-3 h-3" />
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
                 </div>
+
+                {/* Scrap & Defect History */}
+                {order.scrapRecords && order.scrapRecords.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-xs font-bold text-rose-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Зафиксированный брак ({order.scrapRecords.length})
+                      </h3>
+                      <span className="text-[11px] font-mono text-rose-400 font-semibold">
+                        Потери: {scrapTotalCost.toLocaleString('ru-RU')} сум
+                      </span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {order.scrapRecords.map((scrap: any) => (
+                        <div
+                          key={scrap.id}
+                          className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-2.5 flex items-center justify-between text-xs"
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-white">
+                                {scrap.orderItem?.projectNameSnapshot || 'Деталь'}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium">
+                                {ScrapReasonLabels[scrap.reason as keyof typeof ScrapReasonLabels] || scrap.reason}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-slate-400 mt-0.5">
+                              Списано: <span className="text-slate-200 font-semibold">{scrap.grams} г</span>
+                              {scrap.filament && ` • ${scrap.filament.brand} ${scrap.filament.name}`}
+                              {scrap.comment && ` • "${scrap.comment}"`}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="font-bold text-rose-400 font-mono text-xs">
+                              +{scrap.cost.toLocaleString('ru-RU')} сум
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteScrap(scrap.id)}
+                              disabled={deleteScrap.isPending}
+                              className="p-1 text-slate-500 hover:text-red-400 rounded transition"
+                              title="Отменить фиксацию брака (вернуть филамент на склад)"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Financial & Payment Summary */}
                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 space-y-2.5">
@@ -401,6 +483,17 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       {order.calculatedCost.toLocaleString('ru-RU')} сум
                     </span>
                   </div>
+                  {scrapTotalCost > 0 && (
+                    <div className="flex items-center justify-between text-xs text-rose-400">
+                      <span className="flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Потери на брак:
+                      </span>
+                      <span className="font-semibold font-mono">
+                        +{scrapTotalCost.toLocaleString('ru-RU')} сум
+                      </span>
+                    </div>
+                  )}
                   <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-800/80">
                     <span className="text-slate-400">Чистая прибыль:</span>
                     <span className="font-bold text-emerald-400">
@@ -795,6 +888,16 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
           </>
         )}
       </div>
+
+      {order && (
+        <RecordDefectModal
+          isOpen={!!defectItem}
+          onClose={() => setDefectItem(null)}
+          orderId={order.id}
+          orderNumber={order.orderNumber}
+          item={defectItem}
+        />
+      )}
 
       <ProjectDetailModal
         projectId={viewingProjectId}

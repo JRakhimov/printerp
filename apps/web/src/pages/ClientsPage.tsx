@@ -46,7 +46,7 @@ export const ClientsPage: React.FC<ClientsPageProps> = ({ onBack }) => {
             className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
           >
             <ChevronLeft className="w-4 h-4" />
-            <span>Назад в меню</span>
+            <span>Назад</span>
           </button>
         ) : (
           <div />

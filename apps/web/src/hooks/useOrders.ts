@@ -3,6 +3,7 @@ import { apiClient } from '../lib/api-client';
 import { CreateOrderDto, UpdateOrderDto, ChangeOrderStatusDto, OrderStatus, PaymentStatus } from '@printerp/shared';
 import { Client } from './useClients';
 import { Project } from './useProjects';
+import { ScrapRecord } from './useScrap';
 
 export { OrderStatus, PaymentStatus };
 
@@ -55,6 +56,7 @@ export interface Order {
   items: OrderItem[];
   payments: Payment[];
   events?: OrderEvent[];
+  scrapRecords?: ScrapRecord[];
 }
 
 export function useOrders(filters?: { status?: OrderStatus; search?: string }) {

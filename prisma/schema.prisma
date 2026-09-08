@@ -59,6 +59,20 @@ enum ExpenseCategory {
   SOFT
   DELIVERY
   ADS
+  SCRAP
+  OTHER
+}
+
+enum ScrapReason {
+  LAYER_SHIFT
+  BED_ADHESION
+  CLOG
+  WARPING
+  STRINGING
+  DIMENSIONAL_ERROR
+  PURGE_WASTE
+  CALIBRATION
+  MODEL_ERROR
   OTHER
 }
 
@@ -100,6 +114,7 @@ model User {
   createdPayments     Payment[]
   createdTransactions Transaction[]
   orderEvents         OrderEvent[]
+  scrapRecords        ScrapRecord[]
 
   @@map("users")
 }
@@ -140,6 +155,7 @@ model Filament {
   updatedAt     DateTime         @updatedAt @map("updated_at")
 
   projectFilaments ProjectFilament[]
+  scrapRecords     ScrapRecord[]
 
   @@map("filaments")
 }
@@ -208,6 +224,7 @@ model Order {
   transactions Transaction[]
   printJobs    PrintJob[]
   events       OrderEvent[]
+  scrapRecords ScrapRecord[]
 
   @@index([status])
   @@index([deadline])
@@ -230,9 +247,10 @@ model OrderItem {
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 
-  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  project   Project?   @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  printJobs PrintJob[]
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  printJobs    PrintJob[]
+  scrapRecords ScrapRecord[]
 
   @@map("order_items")
 }
@@ -295,7 +313,8 @@ model Printer {
   createdAt        DateTime               @default(now()) @map("created_at")
   updatedAt        DateTime               @updatedAt @map("updated_at")
 
-  printJobs PrintJob[]
+  printJobs    PrintJob[]
+  scrapRecords ScrapRecord[]
 
   @@map("printers")
 }
@@ -317,13 +336,42 @@ model PrintJob {
   createdAt            DateTime       @default(now()) @map("created_at")
   updatedAt            DateTime       @updatedAt @map("updated_at")
 
-  order     Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
-  printer   Printer    @relation(fields: [printerId], references: [id], onDelete: Restrict)
+  order        Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem    OrderItem?    @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  printer      Printer       @relation(fields: [printerId], references: [id], onDelete: Restrict)
+  scrapRecords ScrapRecord[]
 
   @@index([printerId])
   @@index([status])
   @@map("print_jobs")
+}
+
+model ScrapRecord {
+  id          String      @id @default(uuid()) @db.Uuid
+  filamentId  String      @map("filament_id") @db.Uuid
+  orderId     String?     @map("order_id") @db.Uuid
+  orderItemId String?     @map("order_item_id") @db.Uuid
+  printerId   String?     @map("printer_id") @db.Uuid
+  printJobId  String?     @map("print_job_id") @db.Uuid
+  grams       Int
+  cost        Int         @default(0)
+  reason      ScrapReason @default(OTHER)
+  comment     String?
+  createdById String?     @map("created_by_id") @db.Uuid
+  createdAt   DateTime    @default(now()) @map("created_at")
+
+  filament  Filament   @relation(fields: [filamentId], references: [id], onDelete: Restrict)
+  order     Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderItem OrderItem? @relation(fields: [orderItemId], references: [id], onDelete: SetNull)
+  printer   Printer?   @relation(fields: [printerId], references: [id], onDelete: SetNull)
+  printJob  PrintJob?  @relation(fields: [printJobId], references: [id], onDelete: SetNull)
+  createdBy User?      @relation(fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([filamentId])
+  @@index([orderId])
+  @@index([printerId])
+  @@index([createdAt])
+  @@map("scrap_records")
 }
 
 model OrderEvent {

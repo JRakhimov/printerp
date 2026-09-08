@@ -12,6 +12,7 @@ import { FinanceModule } from './modules/finance/finance.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { TelegramBotModule } from './modules/telegram-bot/telegram-bot.module';
 import { PrintersModule } from './modules/printers/printers.module';
+import { ScrapModule } from './modules/scrap/scrap.module';
 
 @Module({
   imports: [
@@ -31,6 +32,7 @@ import { PrintersModule } from './modules/printers/printers.module';
     SettingsModule,
     TelegramBotModule,
     PrintersModule,
+    ScrapModule,
   ],
 })
 export class AppModule {}

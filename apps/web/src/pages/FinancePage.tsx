@@ -4,6 +4,7 @@ import {
   useMonthlyAnalytics,
   useTopModels,
   useTopClients,
+  useTopScrapModels,
   useTransactions,
   useDeleteTransaction,
 } from '../hooks/useFinance';
@@ -27,6 +28,7 @@ import {
   Package,
   Receipt,
   AlertCircle,
+  AlertTriangle,
   Sparkles,
   Calculator,
   Coins,
@@ -55,6 +57,7 @@ export const FinancePage: React.FC = () => {
   const { data: monthly } = useMonthlyAnalytics();
   const { data: topModels } = useTopModels();
   const { data: topClients } = useTopClients();
+  const { data: topScrapModels } = useTopScrapModels();
   const { data: transactions, isLoading: isTxLoading } = useTransactions({
     category: selectedCategory as ExpenseCategory | undefined,
   });
@@ -243,6 +246,43 @@ export const FinancePage: React.FC = () => {
         </div>
       )}
 
+      {/* Scrap & Defect Losses Metric */}
+      {summary?.scrapLoss && summary.scrapLoss.totalScrapCost > 0 && (
+        <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-4 flex items-center justify-between shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5 flex-wrap">
+                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                  Потери от брака и отходов
+                  <span className="text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                    {summary.scrapLoss.incidentsCount} {summary.scrapLoss.incidentsCount === 1 ? 'запись' : 'записей'}
+                  </span>
+                </h4>
+                {summary.scrapLoss.scrapRatePercentage > 0 && (
+                  <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                    {summary.scrapLoss.scrapRatePercentage}% уровень брака
+                  </span>
+                )}
+              </div>
+              <p className="text-[11px] text-slate-400 mt-0.5">
+                Списано {summary.scrapLoss.totalScrapG.toLocaleString('ru-RU')} г пластика (продувка Bambu Lab, брак печати, тесты)
+              </p>
+            </div>
+          </div>
+          <div className="text-right shrink-0">
+            <span className="text-sm font-extrabold text-rose-400 font-mono block">
+              -{summary.scrapLoss.totalScrapCost.toLocaleString('ru-RU')} сум
+            </span>
+            <span className="text-[10px] text-slate-500">
+              себестоимость потерь
+            </span>
+          </div>
+        </div>
+      )}
+
       {/* Monthly Financial Performance List */}
       <div className="space-y-2">
         <h3 className="text-xs font-bold text-white flex items-center gap-1.5">
@@ -289,8 +329,60 @@ export const FinancePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Top Rankings: Top Models & Top Clients (2 separate rows) */}
+      {/* Top Rankings: Defective Models, Top Models & Top Clients */}
       <div className="space-y-3">
+        {/* Row: Top Defective Models (shown only if defects exist) */}
+        {topScrapModels && topScrapModels.length > 0 && (
+          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-4 space-y-2.5 shadow-sm">
+            <div className="flex items-center justify-between">
+              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+                <AlertTriangle className="w-4 h-4 text-rose-400" />
+                Топ моделей с наибольшим браком
+              </h4>
+              <span className="text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+                По числу брака
+              </span>
+            </div>
+
+            <div className="space-y-1.5">
+              {topScrapModels.map((tm, idx) => (
+                <div
+                  key={tm.id}
+                  className="flex items-center justify-between text-xs bg-rose-950/20 p-2.5 rounded-xl border border-rose-900/30 transition"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <span className="text-xs font-extrabold text-rose-400 w-5 shrink-0 text-center">
+                      #{idx + 1}
+                    </span>
+                    <div className="min-w-0">
+                      <span className="font-semibold text-white block truncate">
+                        {tm.name}
+                      </span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 flex-wrap">
+                        <span className="text-rose-300 font-bold">{tm.defectsCount} {tm.defectsCount === 1 ? 'брак' : (tm.defectsCount >= 2 && tm.defectsCount <= 4 ? 'брака' : 'браков')}</span>
+                        <span>&bull;</span>
+                        <span>{tm.totalGrams} г списано</span>
+                        {tm.topReason && (
+                          <>
+                            <span>&bull;</span>
+                            <span className="text-amber-300/90 truncate font-medium">Часто: {tm.topReason}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right shrink-0 ml-2">
+                    <span className="font-bold text-rose-400 block font-mono">
+                      -{tm.totalCost.toLocaleString('ru-RU')} сум
+                    </span>
+                    <span className="text-[9px] text-slate-500 uppercase font-semibold">Убыток</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Row 1: Top Profitable Models */}
         <div className="bg-slate-900 border border-slate-800 rounded-2xl p-4 space-y-2.5 shadow-sm">
           <div className="flex items-center justify-between">

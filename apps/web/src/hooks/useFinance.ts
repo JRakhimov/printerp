@@ -7,6 +7,7 @@ import {
   MonthlyAnalytics,
   TopModelMetric,
   TopClientMetric,
+  TopScrapModelMetric,
   TransactionType,
   ExpenseCategory,
 } from '@printerp/shared';
@@ -66,6 +67,16 @@ export function useTopClients() {
     queryKey: ['finance', 'top-clients'],
     queryFn: async () => {
       const res = await apiClient.get<TopClientMetric[]>('/finance/top-clients');
+      return res.data;
+    },
+  });
+}
+
+export function useTopScrapModels() {
+  return useQuery<TopScrapModelMetric[]>({
+    queryKey: ['finance', 'top-scrap-models'],
+    queryFn: async () => {
+      const res = await apiClient.get<TopScrapModelMetric[]>('/finance/top-scrap-models');
       return res.data;
     },
   });

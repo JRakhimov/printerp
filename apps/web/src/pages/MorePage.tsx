@@ -45,7 +45,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
           className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Назад в меню</span>
+          <span>Назад</span>
         </button>
         <FinancePage />
       </div>
@@ -60,7 +60,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
           className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Назад в меню</span>
+          <span>Назад</span>
         </button>
         <SettingsPage />
       </div>
@@ -75,7 +75,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
           className="flex items-center space-x-1 text-xs text-slate-400 hover:text-white"
         >
           <ChevronLeft className="w-4 h-4" />
-          <span>Назад в меню</span>
+          <span>Назад</span>
         </button>
         <PrintersPage />
       </div>

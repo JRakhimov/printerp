@@ -51,6 +51,11 @@ export class FinanceController {
     return this.financeService.getTopModels();
   }
 
+  @Get('top-scrap-models')
+  async getTopScrapModels() {
+    return this.financeService.getTopScrapModels();
+  }
+
   @Get('top-clients')
   async getTopClients() {
     return this.financeService.getTopClients();

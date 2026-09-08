@@ -276,6 +276,13 @@ export class OrdersService {
             printer: true,
           },
         },
+        scrapRecords: {
+          include: {
+            filament: true,
+            printer: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 

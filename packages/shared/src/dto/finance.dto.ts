@@ -34,6 +34,13 @@ export interface FilamentYieldMetric {
   potentialRoiMultiplier: number;
 }
 
+export interface ScrapLossMetric {
+  totalScrapG: number;
+  totalScrapCost: number;
+  incidentsCount: number;
+  scrapRatePercentage: number;
+}
+
 export interface FinancialSummary {
   revenue: number;
   cogs: number;
@@ -43,6 +50,7 @@ export interface FinancialSummary {
   unpaidBalance: number;
   inventoryValuation: number;
   filamentYield?: FilamentYieldMetric;
+  scrapLoss?: ScrapLossMetric;
 }
 
 export interface MonthlyAnalytics {
@@ -69,4 +77,13 @@ export interface TopClientMetric {
   telegramUsername?: string | null;
   totalOrders: number;
   totalSpent: number;
+}
+
+export interface TopScrapModelMetric {
+  id: string;
+  name: string;
+  defectsCount: number;
+  totalGrams: number;
+  totalCost: number;
+  topReason?: string;
 }
