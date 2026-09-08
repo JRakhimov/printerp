@@ -1,5 +1,6 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
+import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import { OrderStatus, PrintJobStatus } from '@printerp/shared';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -23,8 +24,14 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
   private clients = new Map<string, MqttClient>();
   private lastRunningTimestamps = new Map<string, number>();
   private pendingWorkMinutes = new Map<string, number>();
+  private lastKnownStatus = new Map<string, string>();
+  private printerInfo = new Map<string, { name: string; model: string }>();
+  private lastNotifiedStart = new Map<string, string>();
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly telegramBotService: TelegramBotService,
+  ) {}
 
   async onModuleInit() {
     await this.initAllPrinters();
@@ -40,6 +47,9 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       }
     }
     this.clients.clear();
+    this.lastKnownStatus.clear();
+    this.printerInfo.clear();
+    this.lastNotifiedStart.clear();
 
     for (const [printerId, minutes] of this.pendingWorkMinutes.entries()) {
       if (minutes > 0) {
@@ -68,6 +78,10 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       });
 
       for (const printer of printers) {
+        this.printerInfo.set(printer.id, { name: printer.name, model: printer.model });
+        if (printer.lastStatus) {
+          this.lastKnownStatus.set(printer.id, printer.lastStatus);
+        }
         this.connectPrinter(printer);
       }
     } catch (err) {
@@ -78,11 +92,17 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
   connectPrinter(printer: {
     id: string;
     name: string;
+    model?: string;
     ipAddress: string | null;
     accessCode: string | null;
     serialNumber: string | null;
   }) {
     if (!printer.ipAddress || !printer.accessCode) return;
+
+    this.printerInfo.set(printer.id, {
+      name: printer.name,
+      model: printer.model || this.printerInfo.get(printer.id)?.model || 'Bambu Lab',
+    });
 
     // If client already exists, disconnect first
     this.disconnectPrinter(printer.id);
@@ -175,6 +195,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       this.pendingWorkMinutes.delete(printerId);
     }
     this.lastRunningTimestamps.delete(printerId);
+    this.lastKnownStatus.delete(printerId);
+    this.lastNotifiedStart.delete(printerId);
   }
 
   private requestPushAll(client: MqttClient, serialNumber: string | null) {
@@ -202,6 +224,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     const nozzleTemp = printData.nozzle_temper !== undefined ? Number(printData.nozzle_temper) : undefined;
     const bedTemp = printData.bed_temper !== undefined ? Number(printData.bed_temper) : undefined;
     const currentFile = printData.subtask_name || printData.gcode_file || undefined;
+    const printError = printData.print_error !== undefined ? Number(printData.print_error) : 0;
+    const failReason = printData.fail_reason !== undefined ? Number(printData.fail_reason) : 0;
 
     const updateData: any = {
       lastSeenAt: new Date(),
@@ -271,6 +295,25 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     } else if (gcodeState === 'FINISH') {
       await this.handlePrintFinished(printerId);
     }
+
+    // Check status transition for Telegram notification to admins
+    if (gcodeState !== undefined) {
+      const prevStatus = this.lastKnownStatus.get(printerId);
+      if (prevStatus === undefined) {
+        this.lastKnownStatus.set(printerId, gcodeState);
+      } else if (prevStatus !== gcodeState) {
+        this.lastKnownStatus.set(printerId, gcodeState);
+        await this.handleStatusTransition(printerId, prevStatus, gcodeState, {
+          percent,
+          remainingMinutes,
+          nozzleTemp,
+          bedTemp,
+          currentFile,
+          printError,
+          failReason,
+        });
+      }
+    }
   }
 
   private async handlePrintStarted(printerId: string, filename?: string) {
@@ -333,6 +376,206 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           data: { status: OrderStatus.PRINTED },
         });
       }
+    }
+  }
+
+  private async handleStatusTransition(
+    printerId: string,
+    prevStatus: string,
+    newStatus: string,
+    telemetry: {
+      percent?: number;
+      remainingMinutes?: number;
+      nozzleTemp?: number;
+      bedTemp?: number;
+      currentFile?: string;
+      printError?: number;
+      failReason?: number;
+    },
+  ) {
+    try {
+      const pInfo = this.printerInfo.get(printerId) || { name: '3D Принтер', model: 'Bambu Lab' };
+      const printerName = pInfo.name;
+      const printerModel = pInfo.model;
+
+      // Try to find active or related print job and order
+      const activeJob = await this.prisma.printJob.findFirst({
+        where: {
+          printerId,
+          status: {
+            in: [
+              PrintJobStatus.PRINTING,
+              PrintJobStatus.QUEUED,
+              PrintJobStatus.PAUSED,
+              PrintJobStatus.FINISHED,
+            ],
+          },
+        },
+        include: {
+          order: {
+            select: {
+              orderNumber: true,
+              client: { select: { name: true, instagramUsername: true } },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      const orderNumber = activeJob?.order?.orderNumber;
+      const clientName = activeJob?.order?.client?.instagramUsername
+        ? `@${activeJob.order.client.instagramUsername}`
+        : activeJob?.order?.client?.name || undefined;
+
+      const currentFile = telemetry.currentFile || activeJob?.filename || undefined;
+
+      // 1. STARTED
+      // Triggered when entering PREPARE or RUNNING from a non-printing state (IDLE, FINISH, FAILED, or empty)
+      const isStart =
+        (newStatus === 'PREPARE' || newStatus === 'RUNNING') &&
+        prevStatus !== 'PREPARE' &&
+        prevStatus !== 'RUNNING' &&
+        prevStatus !== 'PAUSED';
+
+      if (isStart) {
+        this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
+        await this.telegramBotService.notifyPrinterStatus({
+          printerName,
+          printerModel,
+          eventType: 'STARTED',
+          isPreparing: newStatus === 'PREPARE',
+          currentFile,
+          remainingMinutes: telemetry.remainingMinutes,
+          nozzleTemp: telemetry.nozzleTemp,
+          bedTemp: telemetry.bedTemp,
+          orderNumber,
+          clientName,
+        });
+        return;
+      }
+
+      // If PREPARE -> RUNNING: check if already notified start for this file/session
+      if (prevStatus === 'PREPARE' && newStatus === 'RUNNING') {
+        const notifiedFor = this.lastNotifiedStart.get(printerId);
+        if (!notifiedFor || (currentFile && notifiedFor !== currentFile)) {
+          this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
+          await this.telegramBotService.notifyPrinterStatus({
+            printerName,
+            printerModel,
+            eventType: 'STARTED',
+            isPreparing: false,
+            currentFile,
+            remainingMinutes: telemetry.remainingMinutes,
+            nozzleTemp: telemetry.nozzleTemp,
+            bedTemp: telemetry.bedTemp,
+            orderNumber,
+            clientName,
+          });
+        }
+        return;
+      }
+
+      // 2. PAUSED
+      if (newStatus === 'PAUSED') {
+        const errorMsg =
+          telemetry.printError && telemetry.printError > 0
+            ? this.telegramBotService.formatBambuError(telemetry.printError, telemetry.failReason)
+            : undefined;
+
+        await this.telegramBotService.notifyPrinterStatus({
+          printerName,
+          printerModel,
+          eventType: 'PAUSED',
+          currentFile,
+          progress: telemetry.percent,
+          remainingMinutes: telemetry.remainingMinutes,
+          errorMessage: errorMsg,
+          orderNumber,
+          clientName,
+        });
+        return;
+      }
+
+      // 3. RESUMED
+      if (prevStatus === 'PAUSED' && newStatus === 'RUNNING') {
+        await this.telegramBotService.notifyPrinterStatus({
+          printerName,
+          printerModel,
+          eventType: 'RESUMED',
+          currentFile,
+          progress: telemetry.percent,
+          remainingMinutes: telemetry.remainingMinutes,
+          orderNumber,
+          clientName,
+        });
+        return;
+      }
+
+      // 4. FINISHED
+      if (newStatus === 'FINISH') {
+        this.lastNotifiedStart.delete(printerId);
+
+        // Fetch fresh printer data for accurate totalWorkHours
+        const dbPrinter = await this.prisma.printer.findUnique({
+          where: { id: printerId },
+          select: { initialWorkHours: true, trackedWorkMinutes: true },
+        });
+
+        const initialH = dbPrinter?.initialWorkHours || 0;
+        const trackedM = dbPrinter?.trackedWorkMinutes || 0;
+        const totalWorkHours = Number((initialH + trackedM / 60).toFixed(1));
+
+        await this.telegramBotService.notifyPrinterStatus({
+          printerName,
+          printerModel,
+          eventType: 'FINISHED',
+          currentFile,
+          totalWorkHours,
+          orderNumber,
+          clientName,
+        });
+        return;
+      }
+
+      // 5. FAILED / CANCELLED
+      if (newStatus === 'FAILED') {
+        this.lastNotifiedStart.delete(printerId);
+
+        const isCancelled = telemetry.failReason === 1 || (!telemetry.printError && telemetry.failReason === 0);
+
+        if (isCancelled) {
+          await this.telegramBotService.notifyPrinterStatus({
+            printerName,
+            printerModel,
+            eventType: 'CANCELLED',
+            currentFile,
+            progress: telemetry.percent,
+            orderNumber,
+            clientName,
+          });
+        } else {
+          const errorMsg = this.telegramBotService.formatBambuError(telemetry.printError, telemetry.failReason);
+          await this.telegramBotService.notifyPrinterStatus({
+            printerName,
+            printerModel,
+            eventType: 'FAILED',
+            currentFile,
+            progress: telemetry.percent,
+            errorCode: telemetry.printError,
+            errorMessage: errorMsg,
+            orderNumber,
+            clientName,
+          });
+        }
+        return;
+      }
+
+      // If IDLE, clear lastNotifiedStart
+      if (newStatus === 'IDLE') {
+        this.lastNotifiedStart.delete(printerId);
+      }
+    } catch (err: any) {
+      this.logger.error(`Error handling status transition for printer ${printerId}:`, err?.message || err);
     }
   }
 

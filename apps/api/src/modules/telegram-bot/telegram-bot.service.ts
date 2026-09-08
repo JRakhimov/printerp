@@ -22,8 +22,10 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   onModuleInit() {
     if (this.isEnabled) {
       this.logger.log('🤖 Telegram Bot Service initialized for notifications & commands');
-      // Start background long-polling for commands like /start
-      this.startPolling();
+      // Start background long-polling for commands like /start (disabled during test runner)
+      if (process.env.NODE_ENV !== 'test') {
+        this.startPolling();
+      }
     } else {
       this.logger.warn('⚠️ Telegram Bot Token not set or using placeholder. Notifications and commands disabled.');
     }
@@ -146,7 +148,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       // 2. Format notification text
-      const orderNumber = `#${order.orderNumber}`;
+      const orderNumber = `${order.orderNumber}`;
       const clientName = order.client?.instagramUsername || 'Неизвестный клиент';
       const finalPrice = Number(order.finalPrice || 0).toLocaleString('ru-RU');
 
@@ -162,7 +164,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       const commentText = order.comment ? `\n💬 <b>Коммент:</b> ${order.comment}` : '';
 
       const messageText =
-        `📦 <b>Новый заказ ${orderNumber}!</b>\n\n` +
+        `📦 <b>Новый заказ ${orderNumber}</b>\n\n` +
         `👤 <b>Клиент:</b> ${clientName}\n` +
         `💰 <b>Сумма:</b> ${finalPrice} сум\n` +
         `📝 <b>Позиции:</b>\n${itemsList}` +
@@ -176,6 +178,189 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err: any) {
       this.logger.error('Failed to process new order notification:', err?.message || err);
+    }
+  }
+
+  /**
+   * Helper to translate Bambu Lab error codes or reasons to human-readable Russian text
+   */
+  formatBambuError(errorCode?: number, failReason?: number): string {
+    if (failReason === 1) {
+      return 'Печать остановлена пользователем';
+    }
+    if (!errorCode || errorCode === 0) {
+      return failReason ? `Код причины: ${failReason}` : 'Неизвестная ошибка принтера';
+    }
+
+    const hex = '0x' + (errorCode >>> 0).toString(16).toUpperCase().padStart(8, '0');
+
+    // Categorize by Bambu error masks
+    if ((errorCode & 0x0f000000) === 0x05000000) {
+      return `Сбой подачи филамента или AMS (${hex})`;
+    }
+    if ((errorCode & 0x0300f000) === 0x03001000) {
+      return `Ошибка нагрева сопла (${hex})`;
+    }
+    if ((errorCode & 0x0300f000) === 0x03002000) {
+      return `Ошибка нагрева стола (${hex})`;
+    }
+    if ((errorCode & 0x0300f000) === 0x03004000) {
+      return `Сбой резака филамента (${hex})`;
+    }
+    if ((errorCode & 0x0300f000) === 0x03005000) {
+      return `Сбой позиционирования / калибровки осей (${hex})`;
+    }
+    if ((errorCode & 0x0300f000) === 0x03008000) {
+      return `Сбой вентилятора охлаждения (${hex})`;
+    }
+
+    return `Код ошибки: ${hex}`;
+  }
+
+  /**
+   * Format HTML Telegram message for printer status transitions
+   */
+  formatPrinterStatusMessage(data: PrinterStatusNotificationData): string {
+    const printerTitle = data.printerModel
+      ? `<b>${data.printerName}</b> (${data.printerModel})`
+      : `<b>${data.printerName}</b>`;
+
+    const remainingStr =
+      data.remainingMinutes !== undefined && data.remainingMinutes > 0
+        ? `${Math.floor(data.remainingMinutes / 60)}ч ${data.remainingMinutes % 60}м`
+        : null;
+
+    const fileLine = data.currentFile ? `📄 <b>Файл:</b> <code>${data.currentFile}</code>\n` : '';
+    const orderLine = data.orderNumber ? `📦 <b>Заказ:</b> №${data.orderNumber}\n` : '';
+    const clientLine = data.clientName ? `👤 <b>Клиент:</b> ${data.clientName}\n` : '';
+
+    switch (data.eventType) {
+      case 'STARTED': {
+        const timeLine = remainingStr ? `⏱ <b>Оценка времени:</b> ~${remainingStr}\n` : '';
+        const tempsLine =
+          data.nozzleTemp !== undefined || data.bedTemp !== undefined
+            ? `🌡 <b>Температуры:</b> Сопло: ${Math.round(data.nozzleTemp || 0)}°C | Стол: ${Math.round(data.bedTemp || 0)}°C\n`
+            : '';
+        const stage = data.isPreparing ? 'Подготовка к печати' : 'Печать запущена';
+
+        return (
+          `🚀 <b>${stage}</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${clientLine}` +
+          `${timeLine}` +
+          `${tempsLine}`
+        );
+      }
+
+      case 'PAUSED': {
+        const progressLine = data.progress !== undefined ? `📊 <b>Прогресс:</b> ${Math.round(data.progress)}%\n` : '';
+        const timeLine = remainingStr ? `⏱ <b>Оставалось:</b> ~${remainingStr}\n` : '';
+        const reasonLine = data.errorMessage ? `⚠️ <b>Причина:</b> ${data.errorMessage}\n` : '';
+
+        return (
+          `⏸ <b>Печать приостановлена (Пауза)</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${progressLine}` +
+          `${timeLine}` +
+          `${reasonLine}\n` +
+          `💡 <i>Принтер ожидает действий оператора или сработал датчик филамента.</i>`
+        );
+      }
+
+      case 'RESUMED': {
+        const progressLine = data.progress !== undefined ? `📊 <b>Прогресс:</b> ${Math.round(data.progress)}%\n` : '';
+        const timeLine = remainingStr ? `⏱ <b>Осталось:</b> ~${remainingStr}\n` : '';
+
+        return (
+          `▶️ <b>Печать возобновлена</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${progressLine}` +
+          `${timeLine}`
+        );
+      }
+
+      case 'FINISHED': {
+        const hoursLine =
+          data.totalWorkHours !== undefined && data.totalWorkHours !== null
+            ? `🕒 <b>Моторесурс принтера:</b> ${data.totalWorkHours} ч\n`
+            : '';
+
+        return (
+          `✅ <b>Печать успешно завершена!</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${clientLine}` +
+          `${hoursLine}\n` +
+          `💡 <i>Не забудьте снять готовую деталь со стола перед следующим запуском.</i>`
+        );
+      }
+
+      case 'FAILED': {
+        const progressLine =
+          data.progress !== undefined ? `📊 <b>Прогресс на момент сбоя:</b> ${Math.round(data.progress)}%\n` : '';
+        const reasonLine = data.errorMessage
+          ? `⚠️ <b>Ошибка:</b> ${data.errorMessage}\n`
+          : '⚠️ <b>Сбой задания печати</b>\n';
+
+        return (
+          `🚨 <b>Сбой / Ошибка печати!</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${progressLine}` +
+          `${reasonLine}\n` +
+          `❗️ <i>Рекомендуется проверить состояние первого слоя, сопла и филамента.</i>`
+        );
+      }
+
+      case 'CANCELLED': {
+        const progressLine =
+          data.progress !== undefined ? `📊 <b>Прогресс на момент отмены:</b> ${Math.round(data.progress)}%\n` : '';
+
+        return (
+          `⏹ <b>Печать отменена</b>\n\n` +
+          `🖨 <b>Принтер:</b> ${printerTitle}\n` +
+          `${fileLine}` +
+          `${orderLine}` +
+          `${progressLine}`
+        );
+      }
+
+      default:
+        return `ℹ️ Статус принтера ${printerTitle} изменен`;
+    }
+  }
+
+  /**
+   * Send printer status notification to all active system users.
+   */
+  async notifyPrinterStatus(data: PrinterStatusNotificationData) {
+    if (!this.isEnabled) return;
+
+    try {
+      const recipients = await this.prisma.user.findMany({
+        where: {
+          isActive: true,
+        },
+      });
+
+      if (recipients.length === 0) return;
+
+      const messageText = this.formatPrinterStatusMessage(data);
+
+      for (const user of recipients) {
+        const chatId = user.telegramId.toString();
+        this.sendMessage(chatId, messageText);
+      }
+    } catch (err: any) {
+      this.logger.error('Failed to process printer status notification:', err?.message || err);
     }
   }
 
@@ -204,4 +389,29 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       this.logger.error(`Error sending Telegram message to ${chatId}:`, err?.message || err);
     }
   }
+}
+
+export type PrinterEventType =
+  | 'STARTED'
+  | 'PAUSED'
+  | 'RESUMED'
+  | 'FINISHED'
+  | 'FAILED'
+  | 'CANCELLED';
+
+export interface PrinterStatusNotificationData {
+  printerName: string;
+  printerModel?: string;
+  eventType: PrinterEventType;
+  isPreparing?: boolean;
+  currentFile?: string;
+  progress?: number;
+  remainingMinutes?: number;
+  nozzleTemp?: number;
+  bedTemp?: number;
+  orderNumber?: number;
+  clientName?: string;
+  totalWorkHours?: number;
+  errorCode?: number;
+  errorMessage?: string;
 }

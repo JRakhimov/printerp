@@ -31,6 +31,8 @@ import {
   Calculator,
   Coins,
   Instagram,
+  Laptop,
+  Megaphone,
 } from 'lucide-react';
 import { ExpenseCategory } from '@printerp/shared';
 
@@ -39,7 +41,9 @@ const categoryLabels: Record<string, { label: string; icon: any; color: string }
   ELECTRICITY: { label: 'Электричество', icon: Zap, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
   PRINTER_PARTS: { label: 'Запчасти принтера', icon: Wrench, color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },
   TOOLS: { label: 'Инструменты', icon: Wrench, color: 'text-purple-400 bg-purple-500/10 border-purple-500/20' },
+  SOFT: { label: 'Софт и подписки', icon: Laptop, color: 'text-cyan-400 bg-cyan-500/10 border-cyan-500/20' },
   DELIVERY: { label: 'Доставка', icon: Package, color: 'text-blue-400 bg-blue-500/10 border-blue-500/20' },
+  ADS: { label: 'Реклама', icon: Megaphone, color: 'text-pink-400 bg-pink-500/10 border-pink-500/20' },
   OTHER: { label: 'Прочее', icon: Receipt, color: 'text-slate-400 bg-slate-500/10 border-slate-500/20' },
 };
 
@@ -308,7 +312,7 @@ export const FinancePage: React.FC = () => {
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
-                      #{idx + 1}
+                      {idx + 1}
                     </span>
                     <div className="min-w-0">
                       <span className="font-semibold text-white block truncate">
@@ -358,7 +362,7 @@ export const FinancePage: React.FC = () => {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <span className="text-xs font-bold text-slate-400 w-5 shrink-0 text-center">
-                        #{idx + 1}
+                        {idx + 1}
                       </span>
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">

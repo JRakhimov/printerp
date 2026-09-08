@@ -69,10 +69,39 @@ describe('FinanceService', () => {
           data: expect.objectContaining({
             type: TransactionType.EXPENSE,
             amount: 150000,
+            createdById: 'user-1',
           }),
         }),
       );
       expect(result.id).toBe('tx-1');
+    });
+
+    it('should extract string createdById if userId is passed as user object', async () => {
+      const dto = {
+        type: TransactionType.EXPENSE,
+        category: ExpenseCategory.SOFT,
+        amount: 80000,
+        comment: 'CAD subscription',
+      };
+
+      mockPrismaService.transaction.create.mockResolvedValue({
+        id: 'tx-2',
+        ...dto,
+        date: new Date(),
+      });
+
+      const userObject = { id: 'user-uuid-123', role: 'OWNER' };
+      const result = await service.createTransaction(dto, userObject as any);
+
+      expect(mockPrismaService.transaction.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({
+            category: ExpenseCategory.SOFT,
+            createdById: 'user-uuid-123',
+          }),
+        }),
+      );
+      expect(result.id).toBe('tx-2');
     });
   });
 

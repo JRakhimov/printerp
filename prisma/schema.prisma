@@ -56,7 +56,9 @@ enum ExpenseCategory {
   ELECTRICITY
   PRINTER_PARTS
   TOOLS
+  SOFT
   DELIVERY
+  ADS
   OTHER
 }
 

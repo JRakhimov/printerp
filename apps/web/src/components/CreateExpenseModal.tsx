@@ -39,6 +39,19 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
 
   const currentType = watch('type');
 
+  React.useEffect(() => {
+    if (isOpen) {
+      reset({
+        type: TransactionType.EXPENSE,
+        category: ExpenseCategory.OTHER,
+        amount: 50000,
+        date: new Date().toISOString().slice(0, 10),
+        comment: '',
+      });
+      createTx.reset();
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   const onSubmit = async (data: CreateTransactionDto) => {
@@ -69,6 +82,14 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
         </div>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
+          <input type="hidden" {...register('type')} />
+
+          {createTx.isError && (
+            <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
+              {(createTx.error as any)?.response?.data?.message || 'Ошибка при сохранении операции. Проверьте правильность полей.'}
+            </div>
+          )}
+
           {/* Type Toggle: Expense / Income */}
           <div className="grid grid-cols-2 gap-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
             <button
@@ -123,8 +144,9 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
               <option value={ExpenseCategory.ELECTRICITY}>Электричество</option>
               <option value={ExpenseCategory.PRINTER_PARTS}>Запчасти и обслуживание</option>
               <option value={ExpenseCategory.TOOLS}>Инструменты и аксессуары</option>
+              <option value={ExpenseCategory.SOFT}>Софт</option>
               <option value={ExpenseCategory.DELIVERY}>Упаковка и доставка</option>
-              <option value={ExpenseCategory.OTHER}>Реклама и продвижение</option>
+              <option value={ExpenseCategory.ADS}>Реклама и продвижение</option>
               <option value={ExpenseCategory.OTHER}>Прочие расходы</option>
             </select>
           </div>

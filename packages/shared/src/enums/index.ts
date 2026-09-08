@@ -46,7 +46,9 @@ export enum ExpenseCategory {
   ELECTRICITY = 'ELECTRICITY',
   PRINTER_PARTS = 'PRINTER_PARTS',
   TOOLS = 'TOOLS',
+  SOFT = 'SOFT',
   DELIVERY = 'DELIVERY',
+  ADS = 'ADS',
   OTHER = 'OTHER',
 }
 

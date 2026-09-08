@@ -15,7 +15,9 @@ import {
 export class FinanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createTransaction(dto: CreateTransactionDto, userId?: string) {
+  async createTransaction(dto: CreateTransactionDto, userId?: string | any) {
+    const createdById = typeof userId === 'object' && userId !== null ? userId.id : userId;
+
     return this.prisma.transaction.create({
       data: {
         type: dto.type,
@@ -24,7 +26,7 @@ export class FinanceService {
         orderId: dto.orderId || null,
         date: dto.date ? new Date(dto.date) : new Date(),
         comment: dto.comment || null,
-        createdById: userId || null,
+        createdById: createdById || null,
       },
       include: {
         order: {
