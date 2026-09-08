@@ -24,7 +24,7 @@ import {
 } from 'lucide-react';
 
 export const PrintersPage: React.FC = () => {
-  const showFinishTime = useTimeCycle(5000);
+  const showFinishTime = useTimeCycle(3000);
   const { data: printers, isLoading, refetch, isRefetching } = usePrinters();
   const deletePrinter = useDeletePrinter();
   const testConnection = useTestPrinterConnection();

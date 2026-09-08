@@ -22,7 +22,7 @@ import {
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
-  const showFinishTime = useTimeCycle(5000);
+  const showFinishTime = useTimeCycle(3000);
   const { data: orders } = useOrders();
   const { data: summary } = useFinancialSummary();
   const { data: printers } = usePrinters();
