@@ -35,8 +35,9 @@ export type UpdatePrinterDto = z.infer<typeof UpdatePrinterSchema>;
 
 export const TestConnectionSchema = z.object({
   ipAddress: z.string().min(1, 'IP Address is required'),
-  accessCode: z.string().min(1, 'Access Code is required'),
+  accessCode: z.string().optional().nullable(),
   serialNumber: z.string().optional().nullable(),
+  manufacturer: z.nativeEnum(PrinterManufacturer).optional().nullable(),
 });
 
 export type TestConnectionDto = z.infer<typeof TestConnectionSchema>;

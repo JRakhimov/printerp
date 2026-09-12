@@ -218,6 +218,57 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Format human-readable duration (e.g. "2ч 18м", "45м", "3ч")
+   */
+  formatDuration(minutes: number): string {
+    const totalMinutes = Math.round(minutes);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (h > 0 && m > 0) return `${h}ч ${m}м`;
+    if (h > 0) return `${h}ч`;
+    return `${m}м`;
+  }
+
+  /**
+   * Format estimated completion time (e.g. "сегодня в 14:30", "завтра в 02:15", "15.09 в 18:00")
+   */
+  formatEstimatedFinish(minutes: number, baseDate: Date = new Date()): string {
+    const finish = new Date(baseDate.getTime() + minutes * 60_000);
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const timeStr = `${pad(finish.getHours())}:${pad(finish.getMinutes())}`;
+
+    const baseMidnight = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
+    const finishMidnight = new Date(finish.getFullYear(), finish.getMonth(), finish.getDate());
+    const diffDays = Math.round((finishMidnight.getTime() - baseMidnight.getTime()) / (1000 * 60 * 60 * 24));
+
+    if (diffDays === 0) {
+      return `сегодня в ${timeStr}`;
+    }
+    if (diffDays === 1) {
+      return `завтра в ${timeStr}`;
+    }
+    return `${pad(finish.getDate())}.${pad(finish.getMonth() + 1)} в ${timeStr}`;
+  }
+
+  /**
+   * Parse estimated duration in minutes from sliced filename
+   * e.g. "dragon_2h18m36s.gcode.3mf" -> 138, "box_45m.gcode" -> 45, "part_1h.gcode" -> 60
+   */
+  parseDurationFromFilename(filename?: string): number | undefined {
+    if (!filename) return undefined;
+    const match = filename.match(
+      /(?:^|[_ -])(?:(\d+)\s*h(?:our(?:s)?)?)?(?:[_\s-]*(\d+)\s*m(?!m)(?:in(?:ute)?(?:s)?)?)?(?:[_\s-]*\d+\s*s)?(?:\.gcode|\.3mf|[_.\s-]|$)/i,
+    );
+    if (match && (match[1] || match[2])) {
+      const hours = match[1] ? parseInt(match[1], 10) : 0;
+      const minutes = match[2] ? parseInt(match[2], 10) : 0;
+      const total = hours * 60 + minutes;
+      if (total > 0) return total;
+    }
+    return undefined;
+  }
+
+  /**
    * Format HTML Telegram message for printer status transitions
    */
   formatPrinterStatusMessage(data: PrinterStatusNotificationData): string {
@@ -225,10 +276,13 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       ? `<b>${data.printerName}</b> (${data.printerModel})`
       : `<b>${data.printerName}</b>`;
 
-    const remainingStr =
+    const remainingMinutes =
       data.remainingMinutes !== undefined && data.remainingMinutes > 0
-        ? `${Math.floor(data.remainingMinutes / 60)}ч ${data.remainingMinutes % 60}м`
-        : null;
+        ? data.remainingMinutes
+        : this.parseDurationFromFilename(data.currentFile);
+
+    const remainingStr = remainingMinutes ? this.formatDuration(remainingMinutes) : null;
+    const finishStr = remainingMinutes ? this.formatEstimatedFinish(remainingMinutes) : null;
 
     const fileLine = data.currentFile ? `📄 <b>Файл:</b> <code>${data.currentFile}</code>\n` : '';
     const orderLine = data.orderNumber ? `📦 <b>Заказ:</b> №${data.orderNumber}\n` : '';
@@ -236,7 +290,12 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
     switch (data.eventType) {
       case 'STARTED': {
-        const timeLine = remainingStr ? `⏱ <b>Оценка времени:</b> ~${remainingStr}\n` : '';
+        const timeLine =
+          remainingStr && finishStr
+            ? `⏱ <b>Оценка времени:</b> ~${remainingStr}\n🏁 <b>Завершение:</b> ~${finishStr}\n`
+            : remainingStr
+              ? `⏱ <b>Оценка времени:</b> ~${remainingStr}\n`
+              : '';
         const tempsLine =
           data.nozzleTemp !== undefined || data.bedTemp !== undefined
             ? `🌡 <b>Температуры:</b> Сопло: ${Math.round(data.nozzleTemp || 0)}°C | Стол: ${Math.round(data.bedTemp || 0)}°C\n`
@@ -273,7 +332,12 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
       case 'RESUMED': {
         const progressLine = data.progress !== undefined ? `📊 <b>Прогресс:</b> ${Math.round(data.progress)}%\n` : '';
-        const timeLine = remainingStr ? `⏱ <b>Осталось:</b> ~${remainingStr}\n` : '';
+        const timeLine =
+          remainingStr && finishStr
+            ? `⏱ <b>Осталось:</b> ~${remainingStr}\n🏁 <b>Завершение:</b> ~${finishStr}\n`
+            : remainingStr
+              ? `⏱ <b>Осталось:</b> ~${remainingStr}\n`
+              : '';
 
         return (
           `▶️ <b>Печать возобновлена</b>\n\n` +

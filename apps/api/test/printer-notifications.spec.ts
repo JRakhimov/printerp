@@ -89,7 +89,56 @@ describe('Printer Status Telegram Notifications', () => {
       expect(message).toContain('№204');
       expect(message).toContain('@alex_3d');
       expect(message).toContain('2ч 5м');
+      expect(message).toContain('Завершение');
       expect(message).toContain('220°C');
+    });
+
+    it('should format estimated finish time correctly for today, tomorrow, and future dates', () => {
+      const baseDate = new Date(2026, 8, 12, 10, 0, 0); // 12 Sep 2026, 10:00
+
+      // Finish today: +120 mins -> 12:00
+      expect(telegramBotService.formatEstimatedFinish(120, baseDate)).toBe('сегодня в 12:00');
+
+      // Finish tomorrow: +15 hours (900 mins) -> 01:00 next day
+      expect(telegramBotService.formatEstimatedFinish(900, baseDate)).toBe('завтра в 01:00');
+
+      // Finish in 2 days: +50 hours (3000 mins) -> 14 Sep 2026, 12:00
+      expect(telegramBotService.formatEstimatedFinish(3000, baseDate)).toBe('14.09 в 12:00');
+    });
+
+    it('should parse duration from filename if remainingMinutes is not provided', () => {
+      const msgWithTimeInFile = telegramBotService.formatPrinterStatusMessage({
+        printerName: 'Anycubic Kobra X',
+        eventType: 'STARTED',
+        currentFile: 'vase_model_1h45m30s.gcode',
+      });
+
+      expect(msgWithTimeInFile).toContain('1ч 45м');
+      expect(msgWithTimeInFile).toContain('Завершение');
+
+      const parsed45m = telegramBotService.parseDurationFromFilename('phone_stand_45m.gcode');
+      expect(parsed45m).toBe(45);
+
+      const parsed2h = telegramBotService.parseDurationFromFilename('large_box_2h.gcode');
+      expect(parsed2h).toBe(120);
+
+      const parsedNoTime = telegramBotService.parseDurationFromFilename('plain_model.gcode');
+      expect(parsedNoTime).toBeUndefined();
+    });
+
+    it('should format RESUMED notification with remaining time and finish time', () => {
+      const resumedMsg = telegramBotService.formatPrinterStatusMessage({
+        printerName: 'Anycubic Kobra X',
+        eventType: 'RESUMED',
+        currentFile: 'gear.gcode',
+        progress: 60,
+        remainingMinutes: 45,
+      });
+
+      expect(resumedMsg).toContain('Печать возобновлена');
+      expect(resumedMsg).toContain('60%');
+      expect(resumedMsg).toContain('45м');
+      expect(resumedMsg).toContain('Завершение');
     });
 
     it('should format PAUSED and FINISHED notifications correctly', () => {

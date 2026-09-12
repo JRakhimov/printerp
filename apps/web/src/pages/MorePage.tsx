@@ -100,7 +100,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
     { id: 'clients', title: 'База клиентов', icon: Users, description: 'Контакты, соцсети и история заказов', color: 'text-blue-500', bg: 'bg-blue-500/10 border border-blue-500/20' },
     { id: 'filaments', title: 'Склад филамента', icon: Palette, description: 'Катушки, бренды, материалы и остатки', color: 'text-indigo-500', bg: 'bg-indigo-500/10 border border-indigo-500/20' },
     { id: 'finance', title: 'Финансы и расходы', icon: DollarSign, description: 'Денежные потоки, платежи и статьи затрат', color: 'text-emerald-500', bg: 'bg-emerald-500/10 border border-emerald-500/20' },
-    { id: 'printers', title: '3D-Принтеры', icon: Printer, description: 'Bambu Lab MQTT телеметрия и статусы', color: 'text-sky-500', bg: 'bg-sky-500/10 border border-sky-500/20' },
+    { id: 'printers', title: '3D-Принтеры', icon: Printer, description: 'MQTT телеметрия и статусы (Bambu Lab & Anycubic)', color: 'text-sky-500', bg: 'bg-sky-500/10 border border-sky-500/20' },
     { id: 'settings', title: 'Настройки системы', icon: Settings, description: 'Пользователи, Telegram-доступ и параметры', color: 'text-amber-500', bg: 'bg-amber-500/10 border border-amber-500/20' },
     { id: 'close_app', title: 'Закрыть приложение', icon: LogOut, description: 'Завершить работу и закрыть мини-апп', color: 'text-rose-500', bg: 'bg-rose-500/10 border border-rose-500/20' },
   ];

@@ -1,12 +1,14 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { PrintersService } from '../src/modules/printers/printers.service';
 import { BambuMqttService } from '../src/modules/printers/bambu-mqtt.service';
+import { AnycubicMqttService } from '../src/modules/printers/anycubic-mqtt.service';
 import { PrismaService } from '../src/database/prisma.service';
 import { PrinterManufacturer, PrinterIntegrationType, PrintJobStatus, OrderStatus } from '@printerp/shared';
 
 describe('PrintersService & BambuMqttService', () => {
   let printersService: PrintersService;
   let bambuMqttService: BambuMqttService;
+  let anycubicMqttService: AnycubicMqttService;
 
   const mockPrismaService = {
     printer: {
@@ -36,16 +38,25 @@ describe('PrintersService & BambuMqttService', () => {
     testConnection: jest.fn().mockResolvedValue({ success: true, message: 'Connected' }),
   };
 
+  const mockAnycubicMqttService = {
+    connectPrinter: jest.fn(),
+    disconnectPrinter: jest.fn(),
+    testConnection: jest.fn().mockResolvedValue({ success: true, message: 'Connected to Anycubic' }),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         PrintersService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: BambuMqttService, useValue: mockBambuMqttService },
+        { provide: AnycubicMqttService, useValue: mockAnycubicMqttService },
       ],
     }).compile();
 
     printersService = module.get<PrintersService>(PrintersService);
+    bambuMqttService = module.get<BambuMqttService>(BambuMqttService);
+    anycubicMqttService = module.get<AnycubicMqttService>(AnycubicMqttService);
     jest.clearAllMocks();
   });
 
@@ -120,6 +131,32 @@ describe('PrintersService & BambuMqttService', () => {
     expect(mockBambuMqttService.connectPrinter).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'printer-2', ipAddress: '192.168.1.125' }),
     );
+  });
+
+  it('should create an Anycubic printer and connect via Anycubic MQTT', async () => {
+    const dto = {
+      name: 'Anycubic Kobra X',
+      model: 'Anycubic Kobra X',
+      serialNumber: null,
+      ipAddress: '192.168.1.145',
+      accessCode: null,
+      manufacturer: PrinterManufacturer.ANYCUBIC,
+      integrationType: PrinterIntegrationType.ANYCUBIC,
+      isActive: true,
+    };
+
+    mockPrismaService.printer.create.mockResolvedValue({
+      id: 'printer-anycubic',
+      ...dto,
+    });
+
+    const result = await printersService.create(dto);
+
+    expect(result.id).toBe('printer-anycubic');
+    expect(mockAnycubicMqttService.connectPrinter).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'printer-anycubic', ipAddress: '192.168.1.145' }),
+    );
+    expect(mockBambuMqttService.connectPrinter).not.toHaveBeenCalled();
   });
 
   it('should update print job status and sync order to PRINTING/PRINTED', async () => {

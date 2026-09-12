@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { UpdatePrinterSchema, UpdatePrinterDto, PrinterResponse } from '@printerp/shared';
+import { UpdatePrinterSchema, UpdatePrinterDto, PrinterResponse, PrinterManufacturer } from '@printerp/shared';
 import { useUpdatePrinter, useTestPrinterConnection } from '../hooks/usePrinters';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import {
@@ -31,6 +31,8 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
   useBodyScrollLock(isOpen && !!printer);
   const updatePrinter = useUpdatePrinter();
   const testConnection = useTestPrinterConnection();
+
+  const isAnycubic = printer?.manufacturer === PrinterManufacturer.ANYCUBIC;
 
   const [testResult, setTestResult] = useState<{
     success: boolean;
@@ -76,10 +78,12 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
   const totalHours = Number((currentInitialHours + (trackedMinutes / 60)).toFixed(1));
 
   const handleTestLink = async () => {
-    if (!ipAddress || !accessCode) {
+    if (!ipAddress || (!isAnycubic && !accessCode)) {
       setTestResult({
         success: false,
-        message: 'Введите IP-адрес и код доступа LAN Access Code для проверки.',
+        message: isAnycubic
+          ? 'Введите IP-адрес принтера Anycubic для проверки.'
+          : 'Введите IP-адрес и код доступа LAN Access Code для проверки.',
       });
       return;
     }
@@ -87,8 +91,9 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
     try {
       const res = await testConnection.mutateAsync({
         ipAddress,
-        accessCode,
+        accessCode: accessCode || undefined,
         serialNumber: serialNumber || undefined,
+        manufacturer: printer.manufacturer,
       });
       setTestResult({
         success: res.success,
@@ -97,7 +102,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
     } catch (err: any) {
       setTestResult({
         success: false,
-        message: err.response?.data?.message || 'Ошибка подключения. Проверьте IP и код доступа.',
+        message: err.response?.data?.message || 'Ошибка подключения. Проверьте IP и статус принтера.',
       });
     }
   };
@@ -118,7 +123,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
         <div className="flex items-center justify-between border-b border-slate-800 pb-3">
           <h3 className="text-sm font-bold text-white flex items-center gap-2">
             <PrinterIcon className="w-4 h-4 text-emerald-400" />
-            Редактировать 3D-принтер Bambu Lab
+            Редактировать 3D-принтер {isAnycubic ? 'Anycubic' : 'Bambu Lab'}
           </h3>
           <button onClick={onClose} className="text-slate-400 hover:text-white p-1">
             <X className="w-4 h-4" />
@@ -134,7 +139,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
               </label>
               <input
                 {...register('name')}
-                placeholder="напр. Bambu P1S #1"
+                placeholder={isAnycubic ? 'напр. Anycubic Kobra X #1' : 'напр. Bambu P1S #1'}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
               />
               {errors.name && <p className="text-[10px] text-red-400 mt-0.5">{errors.name.message}</p>}
@@ -148,12 +153,25 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
                 {...register('model')}
                 className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:border-emerald-500 focus:outline-none"
               >
-                <option value="P1S">Bambu Lab P1S</option>
-                <option value="X1C">Bambu Lab X1-Carbon</option>
-                <option value="A1">Bambu Lab A1</option>
-                <option value="A1_MINI">Bambu Lab A1 Mini</option>
-                <option value="P1P">Bambu Lab P1P</option>
-                <option value="OTHER">Другая модель</option>
+                {isAnycubic ? (
+                  <>
+                    <option value="Anycubic Kobra X">Anycubic Kobra X</option>
+                    <option value="Anycubic Kobra 3">Anycubic Kobra 3</option>
+                    <option value="Anycubic Kobra 2 Pro">Anycubic Kobra 2 Pro</option>
+                    <option value="Anycubic Kobra 2 Plus">Anycubic Kobra 2 Plus</option>
+                    <option value="Anycubic Kobra 2 Max">Anycubic Kobra 2 Max</option>
+                    <option value="OTHER">Другая модель</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="P1S">Bambu Lab P1S</option>
+                    <option value="X1C">Bambu Lab X1-Carbon</option>
+                    <option value="A1">Bambu Lab A1</option>
+                    <option value="A1_MINI">Bambu Lab A1 Mini</option>
+                    <option value="P1P">Bambu Lab P1P</option>
+                    <option value="OTHER">Другая модель</option>
+                  </>
+                )}
               </select>
             </div>
           </div>
@@ -172,32 +190,58 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
           </div>
 
           {/* LAN Access Code & Serial Number */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                <KeyRound className="w-3.5 h-3.5 text-amber-400" />
-                LAN Access Code
-              </label>
-              <input
-                {...register('accessCode')}
-                placeholder="напр. 12345678"
-                type="password"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono"
-              />
-            </div>
+          {isAnycubic ? (
+            <div className="space-y-2">
+              <div className="bg-sky-500/10 border border-sky-500/20 rounded-xl p-2.5 text-xs text-sky-300 flex items-start gap-2">
+                <KeyRound className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
+                <div>
+                  <span className="font-semibold">Код доступа не требуется</span>
+                  <p className="text-[11px] text-sky-400/80 mt-0.5">
+                    Anycubic в режиме LAN авторизуется автоматически через локальный HTTP Handshake.
+                  </p>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
-                <Hash className="w-3.5 h-3.5 text-emerald-400" />
-                Серийный номер (SN) *
-              </label>
-              <input
-                {...register('serialNumber')}
-                placeholder="напр. 01P00A3B12345678"
-                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono uppercase"
-              />
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+                  <Hash className="w-3.5 h-3.5 text-emerald-400" />
+                  Серийный номер (SN)
+                </label>
+                <input
+                  {...register('serialNumber')}
+                  placeholder="Серийный номер"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono uppercase"
+                />
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+                  <KeyRound className="w-3.5 h-3.5 text-amber-400" />
+                  LAN Access Code
+                </label>
+                <input
+                  {...register('accessCode')}
+                  placeholder="напр. 12345678"
+                  type="password"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1 flex items-center gap-1">
+                  <Hash className="w-3.5 h-3.5 text-emerald-400" />
+                  Серийный номер (SN) *
+                </label>
+                <input
+                  {...register('serialNumber')}
+                  placeholder="напр. 01P00A3B12345678"
+                  className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white placeholder-slate-500 focus:border-emerald-500 focus:outline-none font-mono uppercase"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Initial Mileage & Stats */}
           <div className="space-y-2">
@@ -244,7 +288,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
             <div className="flex items-center justify-between">
               <span className="text-[11px] text-slate-400 flex items-center gap-1">
                 <Activity className="w-3.5 h-3.5 text-emerald-400" />
-                Проверка связи MQTT (порт 8883)
+                Проверка связи ({isAnycubic ? 'порты 18910 / 9883' : 'порт 8883'})
               </span>
               <button
                 type="button"

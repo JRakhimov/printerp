@@ -41,8 +41,13 @@ export const PrintersPage: React.FC = () => {
   };
 
   const handleTestSingleLink = async (printer: PrinterResponse) => {
-    if (!printer.ipAddress || !printer.accessCode) {
-      alert('Пожалуйста, сначала настройте IP-адрес и код доступа LAN Access Code для этого принтера.');
+    const isAny = printer.manufacturer === 'ANYCUBIC';
+    if (!printer.ipAddress || (!isAny && !printer.accessCode)) {
+      alert(
+        isAny
+          ? 'Пожалуйста, укажите IP-адрес для этого принтера Anycubic.'
+          : 'Пожалуйста, сначала настройте IP-адрес и код доступа LAN Access Code для этого принтера.',
+      );
       return;
     }
 
@@ -50,8 +55,9 @@ export const PrintersPage: React.FC = () => {
     try {
       const res = await testConnection.mutateAsync({
         ipAddress: printer.ipAddress,
-        accessCode: printer.accessCode,
+        accessCode: printer.accessCode || undefined,
         serialNumber: printer.serialNumber || undefined,
+        manufacturer: printer.manufacturer,
       });
       setTestMessages((prev) => ({
         ...prev,
@@ -82,9 +88,9 @@ export const PrintersPage: React.FC = () => {
         <div>
           <h2 className="text-base font-bold text-white flex items-center gap-2">
             <PrinterIcon className="w-5 h-5 text-emerald-400" />
-            3D-Принтеры Bambu Lab
+            3D-Принтеры
           </h2>
-          <p className="text-xs text-slate-400">Телеметрия по локальному MQTT и мониторинг печати</p>
+          <p className="text-xs text-slate-400">Телеметрия по локальному MQTT (Bambu Lab & Anycubic) и мониторинг печати</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -135,9 +141,9 @@ export const PrintersPage: React.FC = () => {
             <PrinterIcon className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="text-sm font-bold text-white">Принтеры Bambu Lab не подключены</h3>
+            <h3 className="text-sm font-bold text-white">3D-принтеры не подключены</h3>
             <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">
-              Добавьте ваш Bambu Lab (P1S, X1C, A1 и др.) с помощью его локального IP-адреса и кода доступа LAN Access Code.
+              Добавьте ваш Bambu Lab или Anycubic (Kobra X, Kobra 3 и др.) с помощью его локального IP-адреса.
             </p>
           </div>
           <button
@@ -155,6 +161,7 @@ export const PrintersPage: React.FC = () => {
             const isIdle = printer.lastStatus === 'IDLE' || !printer.lastStatus;
             const isPaused = printer.lastStatus === 'PAUSED';
             const isFinished = printer.lastStatus === 'FINISH';
+            const isAnycubic = printer.manufacturer === 'ANYCUBIC';
 
             const progress = printer.printProgress ?? 0;
             const remainingMins = printer.remainingMinutes ?? 0;
@@ -191,15 +198,24 @@ export const PrintersPage: React.FC = () => {
                 {/* Header: Name, Model & Status Badge */}
                 <div className="flex items-start justify-between">
                   <div className="space-y-0.5">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <h3 className="text-sm font-bold text-white">{printer.name}</h3>
+                      <span
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-md border ${
+                          isAnycubic
+                            ? 'bg-sky-500/10 text-sky-400 border-sky-500/30'
+                            : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                        }`}
+                      >
+                        {isAnycubic ? 'Anycubic' : 'Bambu Lab'}
+                      </span>
                       <span className="text-[10px] font-semibold bg-slate-800 text-slate-300 px-2 py-0.5 rounded-md border border-slate-700">
                         {printer.model}
                       </span>
                     </div>
                     <p className="text-[11px] text-slate-400 font-mono flex items-center gap-1.5">
                       <Wifi className="w-3 h-3 text-sky-400" />
-                      {printer.ipAddress ? `${printer.ipAddress}:8883` : 'IP не указан'}
+                      {printer.ipAddress ? `${printer.ipAddress}:${isAnycubic ? '9883' : '8883'}` : 'IP не указан'}
                       {printer.serialNumber && ` • SN: ${printer.serialNumber}`}
                     </p>
                   </div>

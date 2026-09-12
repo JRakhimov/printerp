@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { BambuMqttService } from './bambu-mqtt.service';
+import { AnycubicMqttService } from './anycubic-mqtt.service';
 import {
   CreatePrinterDto,
   UpdatePrinterDto,
@@ -9,6 +10,7 @@ import {
   PrinterResponse,
   PrintJobStatus,
   OrderStatus,
+  PrinterManufacturer,
 } from '@printerp/shared';
 
 @Injectable()
@@ -16,6 +18,7 @@ export class PrintersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly bambuMqttService: BambuMqttService,
+    private readonly anycubicMqttService: AnycubicMqttService,
   ) {}
 
   async findAll(): Promise<PrinterResponse[]> {
@@ -120,8 +123,12 @@ export class PrintersService {
       },
     });
 
-    if (printer.isActive && printer.ipAddress && printer.accessCode) {
-      this.bambuMqttService.connectPrinter(printer);
+    if (printer.isActive && printer.ipAddress) {
+      if (printer.manufacturer === PrinterManufacturer.ANYCUBIC) {
+        this.anycubicMqttService.connectPrinter(printer);
+      } else if (printer.accessCode) {
+        this.bambuMqttService.connectPrinter(printer);
+      }
     }
 
     return printer;
@@ -148,10 +155,15 @@ export class PrintersService {
       },
     });
 
-    if (updated.isActive && updated.ipAddress && updated.accessCode) {
-      this.bambuMqttService.connectPrinter(updated);
+    if (updated.isActive && updated.ipAddress) {
+      if (updated.manufacturer === PrinterManufacturer.ANYCUBIC) {
+        this.anycubicMqttService.connectPrinter(updated);
+      } else if (updated.accessCode) {
+        this.bambuMqttService.connectPrinter(updated);
+      }
     } else {
       this.bambuMqttService.disconnectPrinter(id);
+      this.anycubicMqttService.disconnectPrinter(id);
     }
 
     return updated;
@@ -164,6 +176,7 @@ export class PrintersService {
     }
 
     this.bambuMqttService.disconnectPrinter(id);
+    this.anycubicMqttService.disconnectPrinter(id);
 
     return this.prisma.printer.delete({
       where: { id },
@@ -171,6 +184,10 @@ export class PrintersService {
   }
 
   async testConnection(dto: TestConnectionDto) {
+    if (dto.manufacturer === PrinterManufacturer.ANYCUBIC || !dto.accessCode) {
+      return this.anycubicMqttService.testConnection(dto.ipAddress);
+    }
+
     return this.bambuMqttService.testConnection(
       dto.ipAddress,
       dto.accessCode,

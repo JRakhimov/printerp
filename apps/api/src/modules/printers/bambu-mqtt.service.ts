@@ -1,7 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
-import { OrderStatus, PrintJobStatus } from '@printerp/shared';
+import { OrderStatus, PrintJobStatus, PrinterManufacturer } from '@printerp/shared';
 
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const mqtt = require('mqtt');
@@ -74,6 +74,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           isActive: true,
           ipAddress: { not: null },
           accessCode: { not: null },
+          manufacturer: PrinterManufacturer.BAMBU_LAB,
         },
       });
 
@@ -429,6 +430,13 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
 
       const currentFile = telemetry.currentFile || activeJob?.filename || undefined;
 
+      const estimatedRemaining =
+        telemetry.remainingMinutes && telemetry.remainingMinutes > 0
+          ? telemetry.remainingMinutes
+          : activeJob?.estimatedTimeMinutes && activeJob.estimatedTimeMinutes > 0
+            ? activeJob.estimatedTimeMinutes
+            : undefined;
+
       // 1. STARTED
       // Triggered when entering PREPARE or RUNNING from a non-printing state (IDLE, FINISH, FAILED, or empty)
       const isStart =
@@ -445,7 +453,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           eventType: 'STARTED',
           isPreparing: newStatus === 'PREPARE',
           currentFile,
-          remainingMinutes: telemetry.remainingMinutes,
+          remainingMinutes: estimatedRemaining,
           nozzleTemp: telemetry.nozzleTemp,
           bedTemp: telemetry.bedTemp,
           orderNumber,
@@ -465,7 +473,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
             eventType: 'STARTED',
             isPreparing: false,
             currentFile,
-            remainingMinutes: telemetry.remainingMinutes,
+            remainingMinutes: estimatedRemaining,
             nozzleTemp: telemetry.nozzleTemp,
             bedTemp: telemetry.bedTemp,
             orderNumber,
