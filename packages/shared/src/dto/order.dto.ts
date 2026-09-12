@@ -1,11 +1,17 @@
 import { z } from 'zod';
 import { OrderStatus, PaymentStatus } from '../enums/index.js';
 
+export const OrderItemFilamentInputSchema = z.object({
+  filamentId: z.string().uuid(),
+  grams: z.number().min(0, 'Grams must be non-negative'),
+});
+
 export const OrderItemInputSchema = z.object({
   projectId: z.string().uuid(),
   quantity: z.number().int().min(1, 'Quantity must be at least 1').default(1),
   unitCost: z.number().min(0).optional(),
   unitPrice: z.number().min(0).optional(),
+  filaments: z.array(OrderItemFilamentInputSchema).optional(),
 });
 
 export const CreateOrderSchema = z.object({
@@ -34,6 +40,7 @@ export const ChangeOrderStatusSchema = z.object({
   comment: z.string().optional(),
 });
 
+export type OrderItemFilamentInputDto = z.infer<typeof OrderItemFilamentInputSchema>;
 export type OrderItemInputDto = z.infer<typeof OrderItemInputSchema>;
 export type CreateOrderDto = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrderDto = z.infer<typeof UpdateOrderSchema>;

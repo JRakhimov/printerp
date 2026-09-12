@@ -9,6 +9,7 @@ import {
 } from '../hooks/useOrders';
 import { useClients, useCreateClient } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
+import { useFilaments } from '../hooks/useFilaments';
 import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
 import { CityInput } from './CityInput';
@@ -38,6 +39,7 @@ import {
   CreditCard,
   UserPlus,
   ChevronRight,
+  Disc,
 } from 'lucide-react';
 
 interface OrderDetailModalProps {
@@ -55,6 +57,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const { data: order, isLoading } = useOrder(orderId);
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
+  const { data: filaments } = useFilaments();
 
   const updateOrder = useUpdateOrder();
   const updateStatus = useUpdateOrderStatus();
@@ -65,6 +68,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [statusComment, setStatusComment] = useState('');
   const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
   const [defectItem, setDefectItem] = useState<any>(null);
+
+  const projectMap = new Map((projects || []).map((p) => [p.id, p]));
+  const filamentMap = new Map((filaments || []).map((f) => [f.id, f]));
 
   const handleDeleteScrap = async (scrapId: string) => {
     if (confirm('Отменить фиксацию брака и вернуть списанный вес филамента на склад?')) {
@@ -84,13 +90,36 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [editDeadline, setEditDeadline] = useState('');
   const [editComment, setEditComment] = useState('');
   const [editStatus, setEditStatus] = useState<OrderStatus>(OrderStatus.CREATED);
-  const [editItems, setEditItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
+  const [editItems, setEditItems] = useState<{
+    projectId: string;
+    quantity: number | '';
+    filaments: { filamentId: string; grams: number | '' }[];
+  }[]>([]);
 
   // Quick Client Creation state (2 fields: Instagram & City)
   const createClient = useCreateClient();
   const [isQuickCreatingClient, setIsQuickCreatingClient] = useState(false);
   const [quickInstagram, setQuickInstagram] = useState('');
   const [quickCity, setQuickCity] = useState('Ташкент');
+
+  const getDefaultFilamentsForProject = (projId: string) => {
+    const proj = projectMap.get(projId);
+    if (proj?.projectFilaments && proj.projectFilaments.length > 0) {
+      return proj.projectFilaments.map((pf) => ({
+        filamentId: pf.filamentId,
+        grams: pf.grams as number | '',
+      }));
+    }
+    if (filaments && filaments.length > 0) {
+      return [
+        {
+          filamentId: filaments[0].id,
+          grams: (proj?.weightG || 50) as number | '',
+        },
+      ];
+    }
+    return [];
+  };
 
   const handleCreateQuickClient = async () => {
     if (!quickInstagram.trim()) {
@@ -130,19 +159,49 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setEditComment(order.comment || '');
       setEditStatus(order.status || OrderStatus.CREATED);
       setEditItems(
-        order.items?.map((it) => ({
-          projectId: it.projectId || '',
-          quantity: it.quantity,
-        })) || []
+        order.items?.map((it) => {
+          let itemFilaments: { filamentId: string; grams: number | '' }[] = [];
+          if (it.metadata?.filaments && Array.isArray(it.metadata.filaments) && it.metadata.filaments.length > 0) {
+            itemFilaments = it.metadata.filaments.map((f) => ({
+              filamentId: f.filamentId,
+              grams: f.grams,
+            }));
+          } else if (it.project?.projectFilaments && it.project.projectFilaments.length > 0) {
+            itemFilaments = it.project.projectFilaments.map((pf) => ({
+              filamentId: pf.filamentId,
+              grams: pf.grams,
+            }));
+          } else if (filaments && filaments.length > 0) {
+            itemFilaments = [
+              {
+                filamentId: filaments[0].id,
+                grams: it.project?.weightG || 50,
+              },
+            ];
+          }
+          return {
+            projectId: it.projectId || '',
+            quantity: it.quantity,
+            filaments: itemFilaments,
+          };
+        }) || []
       );
     }
-  }, [order]);
+  }, [order, filaments]);
 
   if (!orderId) return null;
 
   const handleAddItem = () => {
     if (!projects || projects.length === 0) return;
-    setEditItems((prev) => [...prev, { projectId: projects[0].id, quantity: 1 }]);
+    const firstProjId = projects[0].id;
+    setEditItems((prev) => [
+      ...prev,
+      {
+        projectId: firstProjId,
+        quantity: 1,
+        filaments: getDefaultFilamentsForProject(firstProjId),
+      },
+    ]);
   };
 
   const handleRemoveItem = (index: number) => {
@@ -153,14 +212,82 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     setEditItems((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleItemChange = (index: number, field: 'projectId' | 'quantity', value: any) => {
+  const handleItemProjectIdChange = (index: number, newProjectId: string) => {
     setEditItems((prev) =>
       prev.map((item, i) => {
         if (i === index) {
-          if (field === 'quantity') {
-            return { ...item, quantity: value === '' ? '' : Math.max(1, Number(value) || 1) };
+          return {
+            ...item,
+            projectId: newProjectId,
+            filaments: getDefaultFilamentsForProject(newProjectId),
+          };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleItemQuantityChange = (index: number, value: any) => {
+    setEditItems((prev) =>
+      prev.map((item, i) => {
+        if (i === index) {
+          return { ...item, quantity: value === '' ? '' : Math.max(1, Number(value) || 1) };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleItemFilamentChange = (
+    itemIndex: number,
+    filamentIndex: number,
+    field: 'filamentId' | 'grams',
+    value: string | number,
+  ) => {
+    setEditItems((prev) =>
+      prev.map((item, i) => {
+        if (i === itemIndex) {
+          const filamentsList = [...(item.filaments || [])];
+          if (filamentsList[filamentIndex]) {
+            if (field === 'filamentId') {
+              filamentsList[filamentIndex] = {
+                ...filamentsList[filamentIndex],
+                filamentId: value as string,
+              };
+            } else if (field === 'grams') {
+              filamentsList[filamentIndex] = {
+                ...filamentsList[filamentIndex],
+                grams: value === '' ? '' : isNaN(Number(value)) ? '' : Number(value),
+              };
+            }
           }
-          return { ...item, [field]: value };
+          return { ...item, filaments: filamentsList };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleAddItemFilament = (itemIndex: number) => {
+    setEditItems((prev) =>
+      prev.map((item, i) => {
+        if (i === itemIndex) {
+          const filamentsList = [...(item.filaments || [])];
+          const defaultFilamentId = filaments && filaments.length > 0 ? filaments[0].id : '';
+          filamentsList.push({ filamentId: defaultFilamentId, grams: 10 });
+          return { ...item, filaments: filamentsList };
+        }
+        return item;
+      })
+    );
+  };
+
+  const handleRemoveItemFilament = (itemIndex: number, filamentIndex: number) => {
+    setEditItems((prev) =>
+      prev.map((item, i) => {
+        if (i === itemIndex) {
+          const filamentsList = (item.filaments || []).filter((_, idx) => idx !== filamentIndex);
+          return { ...item, filaments: filamentsList };
         }
         return item;
       })
@@ -209,6 +336,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       const formattedItems = editItems.map((it) => ({
         projectId: it.projectId,
         quantity: typeof it.quantity === 'number' ? it.quantity : 1,
+        filaments: it.filaments && it.filaments.length > 0
+          ? it.filaments
+              .filter((f) => f.filamentId && Number(f.grams) > 0)
+              .map((f) => ({
+                filamentId: f.filamentId,
+                grams: Number(f.grams),
+              }))
+          : undefined,
       }));
 
       // 1. Update basic details, items, and deposit
@@ -388,6 +523,55 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             <p className="text-[10px] text-slate-400">
                               {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
                             </p>
+                            {(() => {
+                              const itemFilaments = item.metadata?.filaments && Array.isArray(item.metadata.filaments) && item.metadata.filaments.length > 0
+                                ? item.metadata.filaments.map((f: any) => {
+                                    const fil = filamentMap.get(f.filamentId);
+                                    return {
+                                      filamentId: f.filamentId,
+                                      brand: fil?.brand || 'Филамент',
+                                      name: fil?.name || '',
+                                      material: fil?.material || '',
+                                      color: fil?.color,
+                                      grams: f.grams,
+                                      totalGrams: Math.round(Number(f.grams) * item.quantity * 10) / 10,
+                                    };
+                                  })
+                                : item.project?.projectFilaments && item.project.projectFilaments.length > 0
+                                ? item.project.projectFilaments.map((pf: any) => ({
+                                    filamentId: pf.filamentId,
+                                    brand: pf.filament?.brand || filamentMap.get(pf.filamentId)?.brand || 'Филамент',
+                                    name: pf.filament?.name || filamentMap.get(pf.filamentId)?.name || '',
+                                    material: pf.filament?.material || filamentMap.get(pf.filamentId)?.material || '',
+                                    color: pf.filament?.color || filamentMap.get(pf.filamentId)?.color,
+                                    grams: pf.grams,
+                                    totalGrams: Math.round(Number(pf.grams) * item.quantity * 10) / 10,
+                                  }))
+                                : [];
+
+                              if (itemFilaments.length === 0) return null;
+
+                              return (
+                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                  {itemFilaments.map((fil, fIdx) => (
+                                    <span
+                                      key={fIdx}
+                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 text-[10px] text-slate-300 border border-slate-800"
+                                      title={`Расход: ${fil.grams}г × ${item.quantity} шт = ${fil.totalGrams}г`}
+                                    >
+                                      {fil.color && (
+                                        <span
+                                          className="w-2 h-2 rounded-full border border-slate-700 shrink-0"
+                                          style={{ backgroundColor: fil.color }}
+                                        />
+                                      )}
+                                      <span className="truncate max-w-[120px]">{fil.brand} {fil.name}</span>
+                                      <span className="text-amber-400 font-mono font-semibold">({fil.totalGrams}г)</span>
+                                    </span>
+                                  ))}
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                         <div className="flex items-center gap-2 shrink-0">
@@ -689,51 +873,150 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </button>
                   </div>
 
-                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  <div className="space-y-2.5 max-h-72 overflow-y-auto pr-1">
                     {editItems.map((item, idx) => {
                       const selectedProj = projects?.find((p) => p.id === item.projectId);
-                      const unitCost = selectedProj?.defaultCost || 0;
                       const unitPrice = selectedProj?.defaultPrice || 0;
                       const qty = typeof item.quantity === 'number' ? item.quantity : 1;
-                      const lineTotal = unitPrice * qty;
 
                       return (
                         <div
                           key={idx}
-                          className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 flex items-center gap-2"
+                          className="bg-slate-950 border border-slate-800 rounded-xl p-2.5 space-y-2"
                         >
-                          <select
-                            value={item.projectId}
-                            onChange={(e) => handleItemChange(idx, 'projectId', e.target.value)}
-                            className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none truncate"
-                            required
-                          >
-                            {(projects || []).map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name} ({p.defaultPrice.toLocaleString('ru-RU')} сум)
-                              </option>
-                            ))}
-                          </select>
+                          {/* Model & Quantity Row */}
+                          <div className="flex items-center gap-2">
+                            <select
+                              value={item.projectId}
+                              onChange={(e) => handleItemProjectIdChange(idx, e.target.value)}
+                              className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-indigo-500 focus:outline-none truncate"
+                              required
+                            >
+                              {(projects || []).map((p) => (
+                                <option key={p.id} value={p.id}>
+                                  {p.name} ({p.defaultPrice.toLocaleString('ru-RU')} сум)
+                                </option>
+                              ))}
+                            </select>
 
-                          <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
-                            <span className="text-[11px] text-slate-400 mr-1.5 shrink-0">Кол-во:</span>
-                            <input
-                              type="number"
-                              min="1"
-                              value={item.quantity}
-                              onChange={(e) => handleItemChange(idx, 'quantity', e.target.value)}
-                              className="w-full bg-transparent text-xs font-bold text-white focus:outline-none text-right"
-                            />
+                            <div className="w-24 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1.5">
+                              <span className="text-[10px] text-slate-400 mr-1 shrink-0">Кол:</span>
+                              <input
+                                type="number"
+                                min="1"
+                                value={item.quantity}
+                                onChange={(e) => handleItemQuantityChange(idx, e.target.value)}
+                                className="w-full bg-transparent text-xs font-bold text-white focus:outline-none text-right"
+                              />
+                              <span className="text-[10px] text-slate-400 ml-0.5">шт</span>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(idx)}
+                              className="text-slate-500 hover:text-rose-400 p-1 shrink-0"
+                              title="Удалить модель"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
 
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveItem(idx)}
-                            className="text-slate-500 hover:text-rose-400 p-1 shrink-0"
-                            title="Удалить модель"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+                          {/* Filament deduction & customization sub-section */}
+                          <div className="bg-slate-900/60 border border-slate-800/80 rounded-lg p-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                <Disc className="w-3 h-3 text-amber-400" />
+                                Списание филамента со склада:
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleAddItemFilament(idx)}
+                                className="text-[10px] text-amber-400 hover:text-amber-300 font-medium flex items-center gap-0.5"
+                              >
+                                <Plus className="w-2.5 h-2.5" />
+                                Цвет / филамент
+                              </button>
+                            </div>
+
+                            {(!item.filaments || item.filaments.length === 0) ? (
+                              <div className="flex items-center justify-between text-[11px] text-slate-500 py-0.5 italic">
+                                <span>Филамент не выбран</span>
+                                <button
+                                  type="button"
+                                  onClick={() => handleAddItemFilament(idx)}
+                                  className="text-amber-400 not-italic hover:underline text-[10px]"
+                                >
+                                  Выбрать
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-1.5">
+                                {item.filaments.map((f, fIdx) => {
+                                  const selectedFilament = filamentMap.get(f.filamentId);
+                                  const gramsPerPiece = Number(f.grams) || 0;
+                                  const totalGrams = Math.round(gramsPerPiece * qty * 10) / 10;
+
+                                  return (
+                                    <div key={fIdx} className="flex items-center gap-1.5">
+                                      {/* Spool select with color swatch */}
+                                      <div className="flex-1 min-w-0 flex items-center bg-slate-950 border border-slate-800 rounded-lg px-2 py-1">
+                                        {selectedFilament?.color && (
+                                          <span
+                                            className="w-2.5 h-2.5 rounded-full mr-1.5 shrink-0 border border-slate-700"
+                                            style={{ backgroundColor: selectedFilament.color }}
+                                          />
+                                        )}
+                                        <select
+                                          value={f.filamentId}
+                                          onChange={(e) => handleItemFilamentChange(idx, fIdx, 'filamentId', e.target.value)}
+                                          className="w-full bg-transparent text-[11px] text-slate-200 focus:outline-none truncate"
+                                        >
+                                          {(filaments || []).map((fil) => (
+                                            <option key={fil.id} value={fil.id}>
+                                              {fil.brand} {fil.name} ({fil.material}{fil.color ? ` - ${fil.color}` : ''}) • Склад: {fil.stockG ?? fil.spoolWeightG}г
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </div>
+
+                                      {/* Grams input */}
+                                      <div className="w-20 shrink-0 flex items-center bg-slate-950 border border-slate-800 rounded-lg px-1.5 py-1">
+                                        <input
+                                          type="number"
+                                          min="0.1"
+                                          step="any"
+                                          value={f.grams}
+                                          onChange={(e) => handleItemFilamentChange(idx, fIdx, 'grams', e.target.value)}
+                                          className="w-full min-w-0 bg-transparent text-[11px] text-right text-amber-400 font-bold focus:outline-none"
+                                          placeholder="0"
+                                        />
+                                        <span className="text-[10px] text-slate-400 ml-1 shrink-0">г/шт</span>
+                                      </div>
+
+                                      {/* Total grams badge */}
+                                      <div
+                                        className="shrink-0 px-1.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-mono text-amber-400 font-semibold"
+                                        title={`Спишется: ${gramsPerPiece} г × ${qty} шт = ${totalGrams} г`}
+                                      >
+                                        -{totalGrams}г
+                                      </div>
+
+                                      {item.filaments.length > 1 && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveItemFilament(idx, fIdx)}
+                                          className="text-slate-500 hover:text-red-400 p-0.5 shrink-0"
+                                          title="Удалить филамент"
+                                        >
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
                         </div>
                       );
                     })}

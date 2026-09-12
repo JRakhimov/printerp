@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useClients, useCreateClient } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
+import { useFilaments } from '../hooks/useFilaments';
 import { useCreateOrder } from '../hooks/useOrders';
 import { getClientDisplayName, ClientSource } from '@printerp/shared';
 import { ClientSelect } from './ClientSelect';
 import { CityInput } from './CityInput';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
-import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard, UserPlus } from 'lucide-react';
+import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard, UserPlus, Disc } from 'lucide-react';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -17,13 +18,18 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   useBodyScrollLock(isOpen);
   const { data: clients } = useClients();
   const { data: projects } = useProjects();
+  const { data: filaments } = useFilaments();
   const createOrder = useCreateOrder();
   const createClient = useCreateClient();
 
   const [clientId, setClientId] = useState<string>('');
   const [deadline, setDeadline] = useState<string>('');
   const [comment, setComment] = useState<string>('');
-  const [items, setItems] = useState<{ projectId: string; quantity: number | '' }[]>([]);
+  const [items, setItems] = useState<{
+    projectId: string;
+    quantity: number | '';
+    filaments: { filamentId: string; grams: number | '' }[];
+  }[]>([]);
   const [customFinalPrice, setCustomFinalPrice] = useState<string>('');
   const [initialPaymentAmount, setInitialPaymentAmount] = useState<string>('');
   const [isDepositManuallyEdited, setIsDepositManuallyEdited] = useState<boolean>(false);
@@ -35,6 +41,7 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
   const [quickCity, setQuickCity] = useState('Ташкент');
 
   const projectMap = new Map((projects || []).map((p) => [p.id, p]));
+  const filamentMap = new Map((filaments || []).map((f) => [f.id, f]));
 
   // Live financial metrics
   let calculatedCost = 0;
@@ -89,9 +96,36 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
     }
   };
 
+  const getDefaultFilamentsForProject = (projId: string) => {
+    const proj = projectMap.get(projId);
+    if (proj?.projectFilaments && proj.projectFilaments.length > 0) {
+      return proj.projectFilaments.map((pf) => ({
+        filamentId: pf.filamentId,
+        grams: pf.grams as number | '',
+      }));
+    }
+    if (filaments && filaments.length > 0) {
+      return [
+        {
+          filamentId: filaments[0].id,
+          grams: (proj?.weightG || 50) as number | '',
+        },
+      ];
+    }
+    return [];
+  };
+
   const addItemRow = () => {
     if (projects && projects.length > 0) {
-      setItems([...items, { projectId: projects[0].id, quantity: 1 }]);
+      const firstProjId = projects[0].id;
+      setItems([
+        ...items,
+        {
+          projectId: firstProjId,
+          quantity: 1,
+          filaments: getDefaultFilamentsForProject(firstProjId),
+        },
+      ]);
     }
   };
 
@@ -99,12 +133,68 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
     setItems(items.filter((_, i) => i !== index));
   };
 
-  const updateItemRow = (index: number, field: 'projectId' | 'quantity', value: string | number) => {
+  const updateItemProjectId = (index: number, newProjectId: string) => {
     const updated = [...items];
-    if (field === 'projectId') updated[index].projectId = value as string;
-    if (field === 'quantity') {
-      updated[index].quantity = value === '' ? '' : isNaN(Number(value)) ? '' : Number(value);
+    updated[index] = {
+      ...updated[index],
+      projectId: newProjectId,
+      filaments: getDefaultFilamentsForProject(newProjectId),
+    };
+    setItems(updated);
+  };
+
+  const updateItemQuantity = (index: number, value: string | number) => {
+    const updated = [...items];
+    updated[index] = {
+      ...updated[index],
+      quantity: value === '' ? '' : isNaN(Number(value)) ? '' : Number(value),
+    };
+    setItems(updated);
+  };
+
+  const updateItemFilament = (
+    itemIndex: number,
+    filamentIndex: number,
+    field: 'filamentId' | 'grams',
+    value: string | number,
+  ) => {
+    const updated = [...items];
+    const item = { ...updated[itemIndex] };
+    const filamentsList = [...(item.filaments || [])];
+    if (filamentsList[filamentIndex]) {
+      if (field === 'filamentId') {
+        filamentsList[filamentIndex] = {
+          ...filamentsList[filamentIndex],
+          filamentId: value as string,
+        };
+      } else if (field === 'grams') {
+        filamentsList[filamentIndex] = {
+          ...filamentsList[filamentIndex],
+          grams: value === '' ? '' : isNaN(Number(value)) ? '' : Number(value),
+        };
+      }
+      item.filaments = filamentsList;
+      updated[itemIndex] = item;
+      setItems(updated);
     }
+  };
+
+  const addItemFilament = (itemIndex: number) => {
+    const updated = [...items];
+    const item = { ...updated[itemIndex] };
+    const filamentsList = [...(item.filaments || [])];
+    const defaultFilamentId = filaments && filaments.length > 0 ? filaments[0].id : '';
+    filamentsList.push({ filamentId: defaultFilamentId, grams: 10 });
+    item.filaments = filamentsList;
+    updated[itemIndex] = item;
+    setItems(updated);
+  };
+
+  const removeItemFilament = (itemIndex: number, filamentIndex: number) => {
+    const updated = [...items];
+    const item = { ...updated[itemIndex] };
+    item.filaments = (item.filaments || []).filter((_, i) => i !== filamentIndex);
+    updated[itemIndex] = item;
     setItems(updated);
   };
 
@@ -131,6 +221,14 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
         items: items.map((i) => ({
           projectId: i.projectId,
           quantity: Math.max(1, Number(i.quantity) || 1),
+          filaments: i.filaments && i.filaments.length > 0
+            ? i.filaments
+                .filter((f) => f.filamentId && Number(f.grams) > 0)
+                .map((f) => ({
+                  filamentId: f.filamentId,
+                  grams: Number(f.grams),
+                }))
+            : undefined,
         })),
         finalPrice: customFinalPrice !== '' ? Number(customFinalPrice) : undefined,
         initialPaymentAmount: depositToSubmit,
@@ -273,42 +371,144 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
             {items.length === 0 ? (
               <p className="text-[11px] text-slate-500 italic">Модели в заказ пока не добавлены.</p>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-2.5">
                 {items.map((row, idx) => {
                   const proj = projectMap.get(row.projectId);
                   return (
-                    <div key={idx} className="flex items-center gap-2">
-                      <select
-                        value={row.projectId}
-                        onChange={(e) => updateItemRow(idx, 'projectId', e.target.value)}
-                        className="flex-1 min-w-0 bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white truncate focus:border-emerald-500 focus:outline-none"
-                      >
-                        {(projects || []).map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name} ({Number(p.defaultPrice).toLocaleString('ru-RU')} сум)
-                          </option>
-                        ))}
-                      </select>
+                    <div key={idx} className="bg-slate-900 border border-slate-800 rounded-xl p-2.5 space-y-2">
+                      {/* Model & Quantity Row */}
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={row.projectId}
+                          onChange={(e) => updateItemProjectId(idx, e.target.value)}
+                          className="flex-1 min-w-0 bg-slate-950 border border-slate-800 rounded-xl px-2.5 py-1.5 text-xs text-white truncate focus:border-emerald-500 focus:outline-none"
+                        >
+                          {(projects || []).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.name} ({Number(p.defaultPrice).toLocaleString('ru-RU')} сум)
+                            </option>
+                          ))}
+                        </select>
 
-                      <div className="w-28 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-xl px-2.5 py-1.5 focus-within:border-emerald-500">
-                        <span className="text-[11px] text-slate-400 mr-1 shrink-0">Кол-во:</span>
-                        <input
-                          type="number"
-                          min="1"
-                          value={row.quantity}
-                          onChange={(e) => updateItemRow(idx, 'quantity', e.target.value)}
-                          className="w-full min-w-0 bg-transparent text-xs text-white text-center font-bold focus:outline-none"
-                        />
+                        <div className="w-24 shrink-0 flex items-center bg-slate-950 border border-slate-800 rounded-xl px-2 py-1.5 focus-within:border-emerald-500">
+                          <span className="text-[10px] text-slate-400 mr-1 shrink-0">Кол:</span>
+                          <input
+                            type="number"
+                            min="1"
+                            value={row.quantity}
+                            onChange={(e) => updateItemQuantity(idx, e.target.value)}
+                            className="w-full min-w-0 bg-transparent text-xs text-white text-center font-bold focus:outline-none"
+                          />
+                          <span className="text-[10px] text-slate-400 ml-0.5">шт</span>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => removeItemRow(idx)}
+                          className="text-slate-500 hover:text-red-400 p-1 shrink-0"
+                          title="Удалить модель"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={() => removeItemRow(idx)}
-                        className="text-slate-500 hover:text-red-400 p-1 shrink-0"
-                        title="Удалить модель"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                      {/* Filament deduction & customization */}
+                      <div className="bg-slate-950/70 border border-slate-800/80 rounded-lg p-2 space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                            <Disc className="w-3 h-3 text-amber-400" />
+                            Списание филамента со склада:
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => addItemFilament(idx)}
+                            className="text-[10px] text-amber-400 hover:text-amber-300 font-medium flex items-center gap-0.5"
+                          >
+                            <Plus className="w-2.5 h-2.5" />
+                            Цвет / филамент
+                          </button>
+                        </div>
+
+                        {(!row.filaments || row.filaments.length === 0) ? (
+                          <div className="flex items-center justify-between text-[11px] text-slate-500 py-0.5 italic">
+                            <span>Филамент не выбран</span>
+                            <button
+                              type="button"
+                              onClick={() => addItemFilament(idx)}
+                              className="text-amber-400 not-italic hover:underline text-[10px]"
+                            >
+                              Выбрать
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5">
+                            {row.filaments.map((f, fIdx) => {
+                              const selectedFilament = filamentMap.get(f.filamentId);
+                              const gramsPerPiece = Number(f.grams) || 0;
+                              const qty = Number(row.quantity) || 1;
+                              const totalGrams = Math.round(gramsPerPiece * qty * 10) / 10;
+
+                              return (
+                                <div key={fIdx} className="flex items-center gap-1.5">
+                                  {/* Spool select with color swatch */}
+                                  <div className="flex-1 min-w-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-2 py-1">
+                                    {selectedFilament?.color && (
+                                      <span
+                                        className="w-2.5 h-2.5 rounded-full mr-1.5 shrink-0 border border-slate-700"
+                                        style={{ backgroundColor: selectedFilament.color }}
+                                      />
+                                    )}
+                                    <select
+                                      value={f.filamentId}
+                                      onChange={(e) => updateItemFilament(idx, fIdx, 'filamentId', e.target.value)}
+                                      className="w-full bg-transparent text-[11px] text-slate-200 focus:outline-none truncate"
+                                    >
+                                      {(filaments || []).map((fil) => (
+                                        <option key={fil.id} value={fil.id}>
+                                          {fil.brand} {fil.name} ({fil.material}{fil.color ? ` - ${fil.color}` : ''}) • Склад: {fil.stockG ?? fil.spoolWeightG}г
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+
+                                  {/* Grams input */}
+                                  <div className="w-20 shrink-0 flex items-center bg-slate-900 border border-slate-800 rounded-lg px-1.5 py-1">
+                                    <input
+                                      type="number"
+                                      min="0.1"
+                                      step="any"
+                                      value={f.grams}
+                                      onChange={(e) => updateItemFilament(idx, fIdx, 'grams', e.target.value)}
+                                      className="w-full min-w-0 bg-transparent text-[11px] text-right text-amber-400 font-bold focus:outline-none"
+                                      placeholder="0"
+                                    />
+                                    <span className="text-[10px] text-slate-400 ml-1 shrink-0">г/шт</span>
+                                  </div>
+
+                                  {/* Total grams badge */}
+                                  <div
+                                    className="shrink-0 px-1.5 py-1 rounded bg-amber-500/10 border border-amber-500/20 text-[10px] font-mono text-amber-400 font-semibold"
+                                    title={`Спишется: ${gramsPerPiece} г × ${qty} шт = ${totalGrams} г`}
+                                  >
+                                    -{totalGrams}г
+                                  </div>
+
+                                  {row.filaments.length > 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => removeItemFilament(idx, fIdx)}
+                                      className="text-slate-500 hover:text-red-400 p-0.5 shrink-0"
+                                      title="Удалить филамент"
+                                    >
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
                     </div>
                   );
                 })}

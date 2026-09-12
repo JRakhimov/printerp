@@ -244,6 +244,7 @@ model OrderItem {
   totalCost           Int      @map("total_cost")
   totalPrice          Int      @map("total_price")
   comment             String?
+  metadata            Json?
   createdAt           DateTime @default(now()) @map("created_at")
   updatedAt           DateTime @updatedAt @map("updated_at")
 

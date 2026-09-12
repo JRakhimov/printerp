@@ -15,34 +15,63 @@ export class OrdersService {
    * Helper: calculate filament usage (in grams) for a list of items
    */
   private async calculateFilamentUsage(
-    items: { projectId?: string | null; quantity: number }[],
+    items: {
+      projectId?: string | null;
+      quantity: number;
+      filaments?: { filamentId: string; grams: number }[];
+      metadata?: any;
+    }[],
     tx: any = this.prisma,
   ): Promise<Map<string, number>> {
     const usageMap = new Map<string, number>();
-    const projectIds = items.map((i) => i.projectId).filter(Boolean) as string[];
 
-    if (projectIds.length === 0) {
-      return usageMap;
+    // Collect project IDs for items that do not specify explicit filaments
+    const projectIdsToFetch: string[] = [];
+    for (const item of items) {
+      const customFilaments =
+        item.filaments ||
+        (item.metadata && typeof item.metadata === 'object' && Array.isArray(item.metadata.filaments)
+          ? item.metadata.filaments
+          : undefined);
+
+      if ((!customFilaments || customFilaments.length === 0) && item.projectId) {
+        projectIdsToFetch.push(item.projectId);
+      }
     }
 
-    const projects = await tx.project.findMany({
-      where: { id: { in: projectIds } },
-      include: {
-        projectFilaments: true,
-      },
-    });
-
-    const projectMap = new Map(projects.map((p: any) => [p.id, p]));
+    let projectMap = new Map<string, any>();
+    if (projectIdsToFetch.length > 0) {
+      const projects = await tx.project.findMany({
+        where: { id: { in: projectIdsToFetch } },
+        include: {
+          projectFilaments: true,
+        },
+      });
+      projectMap = new Map(projects.map((p: any) => [p.id, p]));
+    }
 
     for (const item of items) {
-      if (!item.projectId) continue;
-      const project: any = projectMap.get(item.projectId);
-      if (!project || !project.projectFilaments) continue;
-
       const qty = Number(item.quantity) || 1;
-      for (const pf of project.projectFilaments) {
-        const current = usageMap.get(pf.filamentId) || 0;
-        usageMap.set(pf.filamentId, current + pf.grams * qty);
+      const customFilaments: { filamentId: string; grams: number }[] | undefined =
+        item.filaments ||
+        (item.metadata && typeof item.metadata === 'object' && Array.isArray(item.metadata.filaments)
+          ? item.metadata.filaments
+          : undefined);
+
+      if (customFilaments && customFilaments.length > 0) {
+        for (const f of customFilaments) {
+          if (!f.filamentId || !f.grams) continue;
+          const current = usageMap.get(f.filamentId) || 0;
+          usageMap.set(f.filamentId, current + Number(f.grams) * qty);
+        }
+      } else if (item.projectId) {
+        const project = projectMap.get(item.projectId);
+        if (project && project.projectFilaments) {
+          for (const pf of project.projectFilaments) {
+            const current = usageMap.get(pf.filamentId) || 0;
+            usageMap.set(pf.filamentId, current + Number(pf.grams) * qty);
+          }
+        }
       }
     }
 
@@ -141,6 +170,7 @@ export class OrdersService {
         unitPrice,
         totalCost,
         totalPrice,
+        metadata: item.filaments && item.filaments.length > 0 ? { filaments: item.filaments } : undefined,
       };
     });
 
@@ -371,6 +401,7 @@ export class OrdersService {
           unitPrice,
           totalCost,
           totalPrice,
+          metadata: item.filaments && item.filaments.length > 0 ? { filaments: item.filaments } : undefined,
         };
       });
 

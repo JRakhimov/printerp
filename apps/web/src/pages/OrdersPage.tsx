@@ -201,7 +201,7 @@ export const OrdersPage: React.FC = () => {
               <div className="flex items-start justify-between">
                 <div>
                   <div className="flex items-center space-x-2 flex-wrap gap-y-1">
-                    <span className="text-xs font-mono text-emerald-400 font-bold">{order.orderNumber}</span>
+                    <span className="text-xs font-mono text-emerald-400 font-bold">#{order.orderNumber}</span>
                     <h3 className="text-sm font-bold text-white">{getClientDisplayName(order.client)}</h3>
                   </div>
                   <p className="text-xs text-slate-400 mt-0.5">

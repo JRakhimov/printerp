@@ -7,6 +7,11 @@ import { ScrapRecord } from './useScrap';
 
 export { OrderStatus, PaymentStatus };
 
+export interface OrderItemFilament {
+  filamentId: string;
+  grams: number;
+}
+
 export interface OrderItem {
   id: string;
   orderId: string;
@@ -17,6 +22,10 @@ export interface OrderItem {
   unitPrice: number;
   totalCost: number;
   totalPrice: number;
+  metadata?: {
+    filaments?: OrderItemFilament[];
+    [key: string]: any;
+  } | null;
   project?: Project;
 }
 
