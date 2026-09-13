@@ -22,11 +22,24 @@ export interface BambuTelemetry {
 export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(BambuMqttService.name);
   private clients = new Map<string, MqttClient>();
+  private pollingIntervals = new Map<string, NodeJS.Timeout>();
   private lastRunningTimestamps = new Map<string, number>();
   private pendingWorkMinutes = new Map<string, number>();
   private lastKnownStatus = new Map<string, string>();
   private printerInfo = new Map<string, { name: string; model: string }>();
   private lastNotifiedStart = new Map<string, string>();
+  private hasNotifiedRunning = new Map<string, boolean>();
+  private printStartTimes = new Map<string, Date>();
+  private cachedTelemetry = new Map<
+    string,
+    {
+      currentFile?: string;
+      remainingMinutes?: number;
+      percent?: number;
+      nozzleTemp?: number;
+      bedTemp?: number;
+    }
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -38,6 +51,14 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    for (const [, timer] of this.pollingIntervals.entries()) {
+      clearInterval(timer);
+    }
+    this.pollingIntervals.clear();
+    this.hasNotifiedRunning.clear();
+    this.printStartTimes.clear();
+    this.cachedTelemetry.clear();
+
     for (const [printerId, client] of this.clients.entries()) {
       try {
         client.end(true);
@@ -151,6 +172,18 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           } else {
             this.logger.log(`Subscribed to topic ${topic}`);
             this.requestPushAll(client, cleanSerial);
+
+            // Periodically request pushall every 25 seconds to keep telemetry fresh and connection alive
+            const existingTimer = this.pollingIntervals.get(printer.id);
+            if (existingTimer) clearInterval(existingTimer);
+
+            const timer = setInterval(() => {
+              const c = this.clients.get(printer.id);
+              if (c && c.connected) {
+                this.requestPushAll(c, cleanSerial);
+              }
+            }, 25_000);
+            this.pollingIntervals.set(printer.id, timer);
           }
         });
       });
@@ -187,6 +220,12 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       this.clients.delete(printerId);
     }
 
+    const timer = this.pollingIntervals.get(printerId);
+    if (timer) {
+      clearInterval(timer);
+      this.pollingIntervals.delete(printerId);
+    }
+
     const pending = this.pendingWorkMinutes.get(printerId) || 0;
     if (pending > 0) {
       this.prisma.printer.update({
@@ -198,6 +237,9 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     this.lastRunningTimestamps.delete(printerId);
     this.lastKnownStatus.delete(printerId);
     this.lastNotifiedStart.delete(printerId);
+    this.hasNotifiedRunning.delete(printerId);
+    this.printStartTimes.delete(printerId);
+    this.cachedTelemetry.delete(printerId);
   }
 
   private requestPushAll(client: MqttClient, serialNumber: string | null) {
@@ -227,6 +269,17 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     const currentFile = printData.subtask_name || printData.gcode_file || undefined;
     const printError = printData.print_error !== undefined ? Number(printData.print_error) : 0;
     const failReason = printData.fail_reason !== undefined ? Number(printData.fail_reason) : 0;
+
+    const prevCached = this.cachedTelemetry.get(printerId) || {};
+    const updatedCached = {
+      ...prevCached,
+      ...(currentFile !== undefined && { currentFile }),
+      ...(remainingMinutes !== undefined && { remainingMinutes }),
+      ...(percent !== undefined && { percent }),
+      ...(nozzleTemp !== undefined && { nozzleTemp }),
+      ...(bedTemp !== undefined && { bedTemp }),
+    };
+    this.cachedTelemetry.set(printerId, updatedCached);
 
     const updateData: any = {
       lastSeenAt: new Date(),
@@ -259,8 +312,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
 
       if (lastTime) {
         const diffMs = now - lastTime;
-        // Accept valid report interval between 500ms and 2 minutes
-        if (diffMs >= 500 && diffMs <= 120_000) {
+        // Accept valid report interval between 500ms and 15 minutes (long layers without status changes)
+        if (diffMs >= 500 && diffMs <= 900_000) {
           addedMinutes = diffMs / 60_000;
         }
       }
@@ -292,7 +345,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
 
     // Auto sync with Order & PrintJob if printing or finished
     if (gcodeState === 'RUNNING') {
-      await this.handlePrintStarted(printerId, currentFile);
+      await this.handlePrintStarted(printerId, currentFile || updatedCached.currentFile);
     } else if (gcodeState === 'FINISH') {
       await this.handlePrintFinished(printerId);
     }
@@ -305,11 +358,11 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       } else if (prevStatus !== gcodeState) {
         this.lastKnownStatus.set(printerId, gcodeState);
         await this.handleStatusTransition(printerId, prevStatus, gcodeState, {
-          percent,
-          remainingMinutes,
-          nozzleTemp,
-          bedTemp,
-          currentFile,
+          percent: percent ?? updatedCached.percent,
+          remainingMinutes: remainingMinutes ?? updatedCached.remainingMinutes,
+          nozzleTemp: nozzleTemp ?? updatedCached.nozzleTemp,
+          bedTemp: bedTemp ?? updatedCached.bedTemp,
+          currentFile: currentFile ?? updatedCached.currentFile,
           printError,
           failReason,
         });
@@ -428,14 +481,31 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         ? `@${activeJob.order.client.instagramUsername}`
         : activeJob?.order?.client?.name || undefined;
 
-      const currentFile = telemetry.currentFile || activeJob?.filename || undefined;
+      const cached = this.cachedTelemetry.get(printerId) || {};
+      const currentFile =
+        telemetry.currentFile ||
+        cached.currentFile ||
+        activeJob?.filename ||
+        undefined;
 
       const estimatedRemaining =
         telemetry.remainingMinutes && telemetry.remainingMinutes > 0
           ? telemetry.remainingMinutes
-          : activeJob?.estimatedTimeMinutes && activeJob.estimatedTimeMinutes > 0
-            ? activeJob.estimatedTimeMinutes
-            : undefined;
+          : cached.remainingMinutes && cached.remainingMinutes > 0
+            ? cached.remainingMinutes
+            : activeJob?.estimatedTimeMinutes && activeJob.estimatedTimeMinutes > 0
+              ? activeJob.estimatedTimeMinutes
+              : undefined;
+
+      const nozzleTemp =
+        telemetry.nozzleTemp !== undefined
+          ? telemetry.nozzleTemp
+          : cached.nozzleTemp;
+
+      const bedTemp =
+        telemetry.bedTemp !== undefined
+          ? telemetry.bedTemp
+          : cached.bedTemp;
 
       // 1. STARTED
       // Triggered when entering PREPARE or RUNNING from a non-printing state (IDLE, FINISH, FAILED, or empty)
@@ -446,27 +516,29 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         prevStatus !== 'PAUSED';
 
       if (isStart) {
+        if (!this.printStartTimes.has(printerId)) {
+          this.printStartTimes.set(printerId, new Date());
+        }
         this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
-        await this.telegramBotService.notifyPrinterStatus({
-          printerName,
-          printerModel,
-          eventType: 'STARTED',
-          isPreparing: newStatus === 'PREPARE',
-          currentFile,
-          remainingMinutes: estimatedRemaining,
-          nozzleTemp: telemetry.nozzleTemp,
-          bedTemp: telemetry.bedTemp,
-          orderNumber,
-          clientName,
-        });
-        return;
-      }
 
-      // If PREPARE -> RUNNING: check if already notified start for this file/session
-      if (prevStatus === 'PREPARE' && newStatus === 'RUNNING') {
-        const notifiedFor = this.lastNotifiedStart.get(printerId);
-        if (!notifiedFor || (currentFile && notifiedFor !== currentFile)) {
-          this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
+        if (newStatus === 'PREPARE') {
+          this.hasNotifiedRunning.set(printerId, false);
+          await this.telegramBotService.notifyPrinterStatus({
+            printerName,
+            printerModel,
+            eventType: 'STARTED',
+            isPreparing: true,
+            currentFile,
+            remainingMinutes: estimatedRemaining,
+            nozzleTemp,
+            bedTemp,
+            orderNumber,
+            clientName,
+          });
+          return;
+        } else {
+          // Direct start without PREPARE
+          this.hasNotifiedRunning.set(printerId, true);
           await this.telegramBotService.notifyPrinterStatus({
             printerName,
             printerModel,
@@ -474,12 +546,31 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
             isPreparing: false,
             currentFile,
             remainingMinutes: estimatedRemaining,
-            nozzleTemp: telemetry.nozzleTemp,
-            bedTemp: telemetry.bedTemp,
+            nozzleTemp,
+            bedTemp,
             orderNumber,
             clientName,
           });
+          return;
         }
+      }
+
+      // If PREPARE -> RUNNING: warm-up complete, actual printing has started!
+      if (prevStatus === 'PREPARE' && newStatus === 'RUNNING') {
+        this.hasNotifiedRunning.set(printerId, true);
+        this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
+        await this.telegramBotService.notifyPrinterStatus({
+          printerName,
+          printerModel,
+          eventType: 'STARTED',
+          isPreparing: false,
+          currentFile,
+          remainingMinutes: estimatedRemaining,
+          nozzleTemp,
+          bedTemp,
+          orderNumber,
+          clientName,
+        });
         return;
       }
 
@@ -495,8 +586,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           printerModel,
           eventType: 'PAUSED',
           currentFile,
-          progress: telemetry.percent,
-          remainingMinutes: telemetry.remainingMinutes,
+          progress: telemetry.percent ?? cached.percent,
+          remainingMinutes: telemetry.remainingMinutes ?? cached.remainingMinutes,
           errorMessage: errorMsg,
           orderNumber,
           clientName,
@@ -511,8 +602,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           printerModel,
           eventType: 'RESUMED',
           currentFile,
-          progress: telemetry.percent,
-          remainingMinutes: telemetry.remainingMinutes,
+          progress: telemetry.percent ?? cached.percent,
+          remainingMinutes: telemetry.remainingMinutes ?? cached.remainingMinutes ?? estimatedRemaining,
           orderNumber,
           clientName,
         });
@@ -522,6 +613,25 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       // 4. FINISHED
       if (newStatus === 'FINISH') {
         this.lastNotifiedStart.delete(printerId);
+        this.hasNotifiedRunning.delete(printerId);
+
+        // Flush any pending work minutes before computing totals
+        const pending = this.pendingWorkMinutes.get(printerId) || 0;
+        if (pending > 0) {
+          await this.prisma.printer.update({
+            where: { id: printerId },
+            data: { trackedWorkMinutes: { increment: Math.round(pending * 100) / 100 } },
+          });
+          this.pendingWorkMinutes.set(printerId, 0);
+        }
+
+        // Calculate duration of this specific print
+        const startTime = this.printStartTimes.get(printerId) || activeJob?.startedAt;
+        let printDurationMinutes: number | undefined;
+        if (startTime) {
+          printDurationMinutes = Math.round((Date.now() - new Date(startTime).getTime()) / 60_000);
+          this.printStartTimes.delete(printerId);
+        }
 
         // Fetch fresh printer data for accurate totalWorkHours
         const dbPrinter = await this.prisma.printer.findUnique({
@@ -538,6 +648,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           printerModel,
           eventType: 'FINISHED',
           currentFile,
+          printDurationMinutes,
           totalWorkHours,
           orderNumber,
           clientName,
@@ -548,6 +659,8 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       // 5. FAILED / CANCELLED
       if (newStatus === 'FAILED') {
         this.lastNotifiedStart.delete(printerId);
+        this.hasNotifiedRunning.delete(printerId);
+        this.printStartTimes.delete(printerId);
 
         const isCancelled = telemetry.failReason === 1 || (!telemetry.printError && telemetry.failReason === 0);
 

@@ -44,6 +44,17 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
   private lastKnownStatus = new Map<string, string>();
   private printerInfo = new Map<string, { name: string; model: string }>();
   private lastNotifiedStart = new Map<string, string>();
+  private printStartTimes = new Map<string, Date>();
+  private cachedTelemetry = new Map<
+    string,
+    {
+      currentFile?: string;
+      remainingMinutes?: number;
+      percent?: number;
+      nozzleTemp?: number;
+      bedTemp?: number;
+    }
+  >();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -55,6 +66,8 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
   }
 
   async onModuleDestroy() {
+    this.printStartTimes.clear();
+    this.cachedTelemetry.clear();
     // Clear poll intervals
     for (const [printerId, interval] of this.pollIntervals.entries()) {
       clearInterval(interval);
@@ -341,6 +354,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     this.lastRunningTimestamps.delete(printerId);
     this.lastKnownStatus.delete(printerId);
     this.lastNotifiedStart.delete(printerId);
+    this.cachedTelemetry.delete(printerId);
   }
 
   private sendInfoQuery(client: MqttClient, queryTopic: string) {
@@ -377,10 +391,13 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     if (reportType === 'info' && data) {
       const topState = data.state; // "free" | "busy"
       const project = data.project || data.last_project || {};
-      const projectState = project.state; // "preheating", "auto_leveling", "printing", "pausing", "paused", "resuming", "stopping", "stoped", "finished"
-      const isPaused = project.pause === 1 || projectState === 'paused' || projectState === 'pausing';
-      const isFinished = projectState === 'finished';
-      const isFailed = projectState === 'stoped' || projectState === 'stopping' || projectState === 'failed';
+      const projectState = project.state; // (if present in some firmware)
+      const printStatus = project.print_status !== undefined ? Number(project.print_status) : undefined;
+      const prevStatus = this.lastKnownStatus.get(printerId);
+
+      const isPaused = project.pause === 1 || projectState === 'paused' || projectState === 'pausing' || printStatus === 2;
+      const isFinished = projectState === 'finished' || printStatus === 3 || (project.progress === 100 && topState === 'free');
+      const isFailed = projectState === 'stoped' || projectState === 'stopping' || projectState === 'failed' || printStatus === 4 || printStatus === 5;
 
       if (isPaused) {
         parsedState = 'PAUSED';
@@ -395,11 +412,17 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         projectState === 'vibrating' ||
         projectState === 'flow_calibrating' ||
         projectState === 'resuming' ||
-        topState === 'busy'
+        topState === 'busy' ||
+        printStatus === 1
       ) {
         parsedState = 'RUNNING';
       } else if (topState === 'free') {
-        parsedState = 'IDLE';
+        // If printer was previously RUNNING or PAUSED and now reports "free", print has finished!
+        if (prevStatus === 'RUNNING' || prevStatus === 'PAUSED') {
+          parsedState = 'FINISH';
+        } else {
+          parsedState = 'IDLE';
+        }
       }
 
       if (project.progress !== undefined) {
@@ -436,7 +459,21 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       if (data.filename) {
         currentFile = data.filename;
       }
+      if (data.state === 'finished' || data.print_status === 3 || (percent === 100 && remainingMinutes === 0)) {
+        parsedState = 'FINISH';
+      }
     }
+
+    const prevCached = this.cachedTelemetry.get(printerId) || {};
+    const updatedCached = {
+      ...prevCached,
+      ...(currentFile !== undefined && { currentFile }),
+      ...(remainingMinutes !== undefined && { remainingMinutes }),
+      ...(percent !== undefined && { percent }),
+      ...(nozzleTemp !== undefined && { nozzleTemp }),
+      ...(bedTemp !== undefined && { bedTemp }),
+    };
+    this.cachedTelemetry.set(printerId, updatedCached);
 
     if (parsedState !== undefined) {
       updateData.lastStatus = parsedState;
@@ -465,7 +502,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
       if (lastTime) {
         const diffMs = now - lastTime;
-        if (diffMs >= 500 && diffMs <= 120_000) {
+        if (diffMs >= 500 && diffMs <= 900_000) {
           addedMinutes = diffMs / 60_000;
         }
       }
@@ -496,7 +533,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
     // Auto sync with Order & PrintJob
     if (parsedState === 'RUNNING') {
-      await this.handlePrintStarted(printerId, currentFile);
+      await this.handlePrintStarted(printerId, currentFile || updatedCached.currentFile);
     } else if (parsedState === 'FINISH') {
       await this.handlePrintFinished(printerId);
     }
@@ -509,11 +546,11 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       } else if (prevStatus !== parsedState) {
         this.lastKnownStatus.set(printerId, parsedState);
         await this.handleStatusTransition(printerId, prevStatus, parsedState, {
-          percent,
-          remainingMinutes,
-          nozzleTemp,
-          bedTemp,
-          currentFile,
+          percent: percent ?? updatedCached.percent,
+          remainingMinutes: remainingMinutes ?? updatedCached.remainingMinutes,
+          nozzleTemp: nozzleTemp ?? updatedCached.nozzleTemp,
+          bedTemp: bedTemp ?? updatedCached.bedTemp,
+          currentFile: currentFile ?? updatedCached.currentFile,
         });
       }
     }
@@ -621,6 +658,9 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
             : undefined;
 
       if (newStatus === 'RUNNING' && prevStatus !== 'RUNNING') {
+        if (!this.printStartTimes.has(printerId)) {
+          this.printStartTimes.set(printerId, new Date());
+        }
         const dedupeKey = `${currentFile || 'unknown'}_${orderNumber || '0'}`;
         if (this.lastNotifiedStart.get(printerId) === dedupeKey && prevStatus === 'PAUSED') {
           await this.telegramBotService.notifyPrinterStatus({
@@ -669,7 +709,32 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      if (newStatus === 'FINISH') {
+      if (newStatus === 'FINISH' || (prevStatus === 'RUNNING' && newStatus === 'IDLE')) {
+        // Flush pending work minutes
+        const pending = this.pendingWorkMinutes.get(printerId) || 0;
+        if (pending > 0) {
+          await this.prisma.printer.update({
+            where: { id: printerId },
+            data: { trackedWorkMinutes: { increment: Math.round(pending * 100) / 100 } },
+          });
+          this.pendingWorkMinutes.set(printerId, 0);
+        }
+
+        // Calculate duration of this print
+        const startTime = this.printStartTimes.get(printerId) || activeJob?.startedAt;
+        let printDurationMinutes: number | undefined;
+        if (startTime) {
+          printDurationMinutes = Math.round((Date.now() - new Date(startTime).getTime()) / 60_000);
+          this.printStartTimes.delete(printerId);
+        }
+
+        const effectiveFile =
+          currentFile ||
+          telemetry.currentFile ||
+          this.cachedTelemetry.get(printerId)?.currentFile ||
+          activeJob?.filename ||
+          undefined;
+
         const printer = await this.prisma.printer.findUnique({
           where: { id: printerId },
           select: { initialWorkHours: true, trackedWorkMinutes: true },
@@ -682,9 +747,10 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
           printerName,
           printerModel,
           eventType: 'FINISHED',
-          currentFile,
+          currentFile: effectiveFile,
           progress: 100,
           remainingMinutes: 0,
+          printDurationMinutes,
           totalWorkHours: totalHours,
           orderNumber,
           clientName,
@@ -695,6 +761,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       }
 
       if (newStatus === 'FAILED') {
+        this.printStartTimes.delete(printerId);
         await this.telegramBotService.notifyPrinterStatus({
           printerName,
           printerModel,
@@ -710,6 +777,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
       if (newStatus === 'IDLE') {
         this.lastNotifiedStart.delete(printerId);
+        this.printStartTimes.delete(printerId);
       }
     } catch (err: any) {
       this.logger.error(`Error handling status transition for Anycubic printer ${printerId}:`, err?.message || err);

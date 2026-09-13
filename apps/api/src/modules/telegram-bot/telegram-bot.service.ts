@@ -230,16 +230,46 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
+   * Get configured application timezone (default Asia/Tashkent, UTC+5)
+   */
+  getTimeZone(): string {
+    return (
+      this.configService.get<string>('TIMEZONE') ||
+      process.env.TIMEZONE ||
+      process.env.TZ ||
+      'Asia/Tashkent'
+    );
+  }
+
+  /**
    * Format estimated completion time (e.g. "сегодня в 14:30", "завтра в 02:15", "15.09 в 18:00")
    */
   formatEstimatedFinish(minutes: number, baseDate: Date = new Date()): string {
     const finish = new Date(baseDate.getTime() + minutes * 60_000);
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const timeStr = `${pad(finish.getHours())}:${pad(finish.getMinutes())}`;
+    const timeZone = this.getTimeZone();
 
-    const baseMidnight = new Date(baseDate.getFullYear(), baseDate.getMonth(), baseDate.getDate());
-    const finishMidnight = new Date(finish.getFullYear(), finish.getMonth(), finish.getDate());
-    const diffDays = Math.round((finishMidnight.getTime() - baseMidnight.getTime()) / (1000 * 60 * 60 * 24));
+    const timeFormatter = new Intl.DateTimeFormat('ru-RU', {
+      timeZone,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    const timeStr = timeFormatter.format(finish);
+
+    const dayFormatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+
+    const baseDayParts = dayFormatter.format(baseDate).split('-');
+    const finishDayParts = dayFormatter.format(finish).split('-');
+
+    const baseUtcMidnight = Date.UTC(Number(baseDayParts[0]), Number(baseDayParts[1]) - 1, Number(baseDayParts[2]));
+    const finishUtcMidnight = Date.UTC(Number(finishDayParts[0]), Number(finishDayParts[1]) - 1, Number(finishDayParts[2]));
+
+    const diffDays = Math.round((finishUtcMidnight - baseUtcMidnight) / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
       return `сегодня в ${timeStr}`;
@@ -247,7 +277,13 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     if (diffDays === 1) {
       return `завтра в ${timeStr}`;
     }
-    return `${pad(finish.getDate())}.${pad(finish.getMonth() + 1)} в ${timeStr}`;
+
+    const dateFormatter = new Intl.DateTimeFormat('ru-RU', {
+      timeZone,
+      day: '2-digit',
+      month: '2-digit',
+    });
+    return `${dateFormatter.format(finish)} в ${timeStr}`;
   }
 
   /**
@@ -350,9 +386,13 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
 
       case 'FINISHED': {
+        const durationLine =
+          data.printDurationMinutes !== undefined && data.printDurationMinutes > 0
+            ? `⏱ <b>Время печати:</b> ${this.formatDuration(data.printDurationMinutes)}\n`
+            : '';
         const hoursLine =
           data.totalWorkHours !== undefined && data.totalWorkHours !== null
-            ? `🕒 <b>Моторесурс принтера:</b> ${data.totalWorkHours} ч\n`
+            ? `🕒 <b>Общий моторесурс принтера:</b> ${data.totalWorkHours} ч\n`
             : '';
 
         return (
@@ -361,6 +401,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           `${fileLine}` +
           `${orderLine}` +
           `${clientLine}` +
+          `${durationLine}` +
           `${hoursLine}\n` +
           `💡 <i>Не забудьте снять готовую деталь со стола перед следующим запуском.</i>`
         );
@@ -471,6 +512,7 @@ export interface PrinterStatusNotificationData {
   currentFile?: string;
   progress?: number;
   remainingMinutes?: number;
+  printDurationMinutes?: number;
   nozzleTemp?: number;
   bedTemp?: number;
   orderNumber?: number;

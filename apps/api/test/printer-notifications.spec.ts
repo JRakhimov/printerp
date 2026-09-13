@@ -2,11 +2,13 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { TelegramBotService, PrinterStatusNotificationData } from '../src/modules/telegram-bot/telegram-bot.service';
 import { BambuMqttService } from '../src/modules/printers/bambu-mqtt.service';
+import { AnycubicMqttService } from '../src/modules/printers/anycubic-mqtt.service';
 import { PrismaService } from '../src/database/prisma.service';
 
 describe('Printer Status Telegram Notifications', () => {
   let telegramBotService: TelegramBotService;
   let bambuMqttService: BambuMqttService;
+  let anycubicMqttService: AnycubicMqttService;
 
   const mockPrismaService = {
     user: {
@@ -44,6 +46,7 @@ describe('Printer Status Telegram Notifications', () => {
       providers: [
         TelegramBotService,
         BambuMqttService,
+        AnycubicMqttService,
         { provide: PrismaService, useValue: mockPrismaService },
         { provide: ConfigService, useValue: mockConfigService },
       ],
@@ -51,6 +54,7 @@ describe('Printer Status Telegram Notifications', () => {
 
     telegramBotService = module.get<TelegramBotService>(TelegramBotService);
     bambuMqttService = module.get<BambuMqttService>(BambuMqttService);
+    anycubicMqttService = module.get<AnycubicMqttService>(AnycubicMqttService);
   });
 
   afterEach(async () => {
@@ -94,7 +98,7 @@ describe('Printer Status Telegram Notifications', () => {
     });
 
     it('should format estimated finish time correctly for today, tomorrow, and future dates', () => {
-      const baseDate = new Date(2026, 8, 12, 10, 0, 0); // 12 Sep 2026, 10:00
+      const baseDate = new Date('2026-09-12T10:00:00+05:00'); // 12 Sep 2026, 10:00 in Asia/Tashkent
 
       // Finish today: +120 mins -> 12:00
       expect(telegramBotService.formatEstimatedFinish(120, baseDate)).toBe('сегодня в 12:00');
@@ -160,10 +164,12 @@ describe('Printer Status Telegram Notifications', () => {
         printerModel: 'P1S',
         eventType: 'FINISHED',
         currentFile: 'gear.3mf',
+        printDurationMinutes: 475,
         totalWorkHours: 128.5,
         orderNumber: 15,
       });
       expect(finishedMsg).toContain('Печать успешно завершена');
+      expect(finishedMsg).toContain('7ч 55м');
       expect(finishedMsg).toContain('128.5 ч');
       expect(finishedMsg).toContain('№15');
     });
@@ -236,6 +242,67 @@ describe('Printer Status Telegram Notifications', () => {
           currentFile: 'box.3mf',
           orderNumber: 101,
           clientName: '@client_insta',
+        }),
+      );
+    });
+
+    it('should trigger STARTED with isPreparing=true on PREPARE, and STARTED with isPreparing=false on RUNNING', async () => {
+      const notifySpy = jest.spyOn(telegramBotService, 'notifyPrinterStatus').mockResolvedValue(undefined);
+
+      bambuMqttService.connectPrinter({
+        id: 'printer-a1',
+        name: 'Workshop A1',
+        model: 'A1',
+        ipAddress: '192.168.1.105',
+        accessCode: '12345678',
+        serialNumber: '01A00B999',
+      });
+
+      mockPrismaService.printer.update.mockResolvedValue({});
+      mockPrismaService.printJob.findFirst.mockResolvedValue({
+        id: 'job-a1',
+        orderId: 'order-a1',
+        filename: 'vase_8h.3mf',
+        order: { orderNumber: 205, client: { instagramUsername: 'alex' } },
+      });
+
+      // 1. Initial IDLE
+      await bambuMqttService.handlePrinterReport('printer-a1', {
+        print: { gcode_state: 'IDLE' },
+      });
+      notifySpy.mockClear();
+
+      // 2. PREPARE triggers "Подготовка к печати"
+      await bambuMqttService.handlePrinterReport('printer-a1', {
+        print: {
+          gcode_state: 'PREPARE',
+          nozzle_temper: 49,
+          bed_temper: 0,
+        },
+      });
+      expect(notifySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'STARTED',
+          isPreparing: true,
+        }),
+      );
+      notifySpy.mockClear();
+
+      // 3. RUNNING triggers "Печать запущена" with cached / job filename and remaining minutes
+      await bambuMqttService.handlePrinterReport('printer-a1', {
+        print: {
+          gcode_state: 'RUNNING',
+          nozzle_temper: 220,
+          bed_temper: 65,
+          mc_remaining_time: 480,
+        },
+      });
+      expect(notifySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'STARTED',
+          isPreparing: false,
+          currentFile: 'vase_8h.3mf',
+          remainingMinutes: 480,
         }),
       );
     });
@@ -340,6 +407,71 @@ describe('Printer Status Telegram Notifications', () => {
         expect.objectContaining({
           eventType: 'CANCELLED',
           progress: 15,
+        }),
+      );
+    });
+  });
+
+  describe('AnycubicMqttService status transition handling', () => {
+    it('should trigger STARTED and FINISHED notifications on print completion', async () => {
+      const notifySpy = jest.spyOn(telegramBotService, 'notifyPrinterStatus').mockResolvedValue(undefined);
+
+      mockPrismaService.printer.update.mockResolvedValue({});
+      mockPrismaService.printer.findUnique.mockResolvedValue({
+        initialWorkHours: 10,
+        trackedWorkMinutes: 60,
+      });
+
+      // 1. Initial IDLE state (state: free)
+      await anycubicMqttService.handlePrinterReport(
+        'printer-kobra',
+        'anycubic/anycubicCloud/v1/printer/public/20030/dev1/info/report',
+        { data: { state: 'free' } },
+      );
+      expect(notifySpy).not.toHaveBeenCalled();
+
+      // 2. Start print (state: busy, project active)
+      await anycubicMqttService.handlePrinterReport(
+        'printer-kobra',
+        'anycubic/anycubicCloud/v1/printer/public/20030/dev1/info/report',
+        {
+          data: {
+            state: 'busy',
+            project: {
+              filename: 'overhang_test_57m.gcode',
+              print_status: 1,
+              progress: 5,
+              remain_time: 50,
+            },
+            temp: { curr_nozzle_temp: 205, curr_hotbed_temp: 60 },
+          },
+        },
+      );
+
+      expect(notifySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'STARTED',
+          currentFile: 'overhang_test_57m.gcode',
+        }),
+      );
+      notifySpy.mockClear();
+
+      // 3. Print finishes (printer returns to free state)
+      await anycubicMqttService.handlePrinterReport(
+        'printer-kobra',
+        'anycubic/anycubicCloud/v1/printer/public/20030/dev1/info/report',
+        {
+          data: {
+            state: 'free',
+            project: null,
+          },
+        },
+      );
+
+      expect(notifySpy).toHaveBeenCalledWith(
+        expect.objectContaining({
+          eventType: 'FINISHED',
+          currentFile: 'overhang_test_57m.gcode',
         }),
       );
     });
