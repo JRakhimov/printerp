@@ -38,6 +38,7 @@ export interface AnycubicCredentials {
 export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(AnycubicMqttService.name);
   private clients = new Map<string, MqttClient>();
+  private cameraTopics = new Map<string, string>();
   private pollIntervals = new Map<string, NodeJS.Timeout>();
   private lastRunningTimestamps = new Map<string, number>();
   private pendingWorkMinutes = new Map<string, number>();
@@ -85,6 +86,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       }
     }
     this.clients.clear();
+    this.cameraTopics.clear();
     this.lastKnownStatus.clear();
     this.printerInfo.clear();
     this.lastNotifiedStart.clear();
@@ -287,6 +289,8 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
       const reportTopic = `anycubic/anycubicCloud/v1/printer/public/${creds.modelId}/${creds.deviceId}/+/report`;
       const queryTopic = `anycubic/anycubicCloud/v1/web/printer/${creds.modelId}/${creds.deviceId}/info`;
+      const cameraTopic = `anycubic/anycubicCloud/v1/web/printer/${creds.modelId}/${creds.deviceId}/video`;
+      this.cameraTopics.set(printer.id, cameraTopic);
 
       client.on('connect', () => {
         this.logger.log(`✅ Connected to Anycubic printer "${printer.name}" via MQTT`);
@@ -343,6 +347,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       }
       this.clients.delete(printerId);
     }
+    this.cameraTopics.delete(printerId);
 
     const pending = this.pendingWorkMinutes.get(printerId) || 0;
     if (pending > 0) {
@@ -926,5 +931,32 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
    */
   getCameraUrl(printerId: string): string | undefined {
     return this.cachedTelemetry.get(printerId)?.cameraUrl;
+  }
+
+  /**
+   * Ask the printer to expose (or stop) its local HTTP-FLV camera stream.
+   */
+  async setCameraCapture(printerId: string, active: boolean): Promise<void> {
+    const client = this.clients.get(printerId);
+    const topic = this.cameraTopics.get(printerId);
+
+    if (!client?.connected || !topic) {
+      throw new Error('Anycubic MQTT is not connected');
+    }
+
+    const payload = JSON.stringify({
+      type: 'video',
+      action: active ? 'startCapture' : 'stopCapture',
+      timestamp: Date.now(),
+      msgid: crypto.randomUUID(),
+      data: null,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      client.publish(topic, payload, { qos: 0 }, (err?: Error) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    });
   }
 }

@@ -16,6 +16,7 @@ describe('PrinterCameraService', () => {
 
   const mockAnycubicMqttService = {
     getCameraUrl: jest.fn(),
+    setCameraCapture: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -132,6 +133,23 @@ describe('PrinterCameraService', () => {
       expect(mockSession.lastFrameTime).toBeGreaterThan(0);
 
       return expect(frameEmitted).resolves.toEqual(mockJpeg);
+    });
+  });
+
+  describe('buildAnycubicStreamUrl', () => {
+    it('should use the Anycubic HTTP-FLV endpoint by default', () => {
+      expect(cameraService.buildAnycubicStreamUrl('192.168.1.145')).toBe(
+        'http://192.168.1.145:18088/flv',
+      );
+    });
+
+    it('should preserve an absolute URL reported by the printer', () => {
+      expect(
+        cameraService.buildAnycubicStreamUrl(
+          '192.168.1.145',
+          'rtsp://192.168.1.145:8554/live?token=abc',
+        ),
+      ).toBe('rtsp://192.168.1.145:8554/live?token=abc');
     });
   });
 

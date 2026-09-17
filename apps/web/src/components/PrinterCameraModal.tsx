@@ -214,6 +214,10 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
               onError={() => {
                 setIsLoaded(false);
                 setHasError(true);
+                apiClient
+                  .get(`/printers/${printer.id}/camera/status`)
+                  .then((res) => setCameraStatus(res.data))
+                  .catch(() => {});
               }}
               className={`w-full h-full object-contain transition-opacity duration-300 ${
                 isLoaded ? 'opacity-100' : 'opacity-0'
@@ -257,7 +261,8 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
                 <p className="text-xs text-slate-400 max-w-sm">
                   {cameraStatus?.rateLimited
                     ? 'Встроенный медиасервер принтера временно заблокировал частые подключения (Too Many Requests). Ограничение снимется автоматически (~40 мин) или после перезагрузки принтера (не перезагружайте во время активной печати!).'
-                    : 'Принтер выключен, находится в режиме глубокого сна или видеопоток не транслируется в локальную сеть.'}
+                    : cameraStatus?.errorMessage ||
+                      'Принтер выключен, находится в режиме глубокого сна или видеопоток не транслируется в локальную сеть.'}
                 </p>
               </div>
               <button

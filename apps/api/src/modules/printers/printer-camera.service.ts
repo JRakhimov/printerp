@@ -303,6 +303,52 @@ export class PrinterCameraService implements OnModuleDestroy {
     return 'ffmpeg';
   }
 
+  buildAnycubicStreamUrl(printerIp: string, reportedUrl?: string): string {
+    const cleanIp = printerIp.replace(/^https?:\/\//i, '').replace(/:.*$/, '').trim();
+    const url = reportedUrl?.trim();
+
+    if (!url) return `http://${cleanIp}:18088/flv`;
+    if (/^[a-z][a-z\d+.-]*:\/\//i.test(url)) return url;
+    if (url.startsWith('/')) return `http://${cleanIp}:18088${url}`;
+    return `http://${url}`;
+  }
+
+  private waitForAnycubicFrame(
+    session: AnycubicCameraSession,
+    timeoutMs = 10_000,
+  ): Promise<void> {
+    if (session.latestFrame && Date.now() - session.lastFrameTime < 10_000) {
+      return Promise.resolve();
+    }
+
+    return new Promise<void>((resolve, reject) => {
+      const cleanup = () => {
+        clearTimeout(timeout);
+        session.emitter.off('frame', onFrame);
+        session.emitter.off('streamError', onError);
+      };
+      const onFrame = () => {
+        cleanup();
+        resolve();
+      };
+      const onError = (message: string) => {
+        cleanup();
+        reject(new ServiceUnavailableException(message));
+      };
+      const timeout = setTimeout(() => {
+        cleanup();
+        reject(
+          new ServiceUnavailableException(
+            session.lastError || 'Таймаут ожидания видеопотока Anycubic',
+          ),
+        );
+      }, timeoutMs);
+
+      session.emitter.once('frame', onFrame);
+      session.emitter.once('streamError', onError);
+    });
+  }
+
   /**
    * Parse MJPEG chunks from ffmpeg stdout (SOI 0xFFD8 to EOI 0xFFD9)
    */
@@ -358,9 +404,8 @@ export class PrinterCameraService implements OnModuleDestroy {
       );
     }
 
-    const cleanIp = printer.ipAddress.replace(/^https?:\/\//i, '').replace(/:.*$/, '').trim();
     const rawUrl = this.anycubicMqttService.getCameraUrl(printer.id);
-    const streamUrl = rawUrl || `http://${cleanIp}:18088/live`;
+    const streamUrl = this.buildAnycubicStreamUrl(printer.ipAddress, rawUrl);
     const ffmpegPath = this.getFfmpegPath();
 
     this.logger.log(`Starting ffmpeg camera stream for Anycubic "${printer.name}" from ${streamUrl}...`);
@@ -404,12 +449,18 @@ export class PrinterCameraService implements OnModuleDestroy {
 
       proc.on('error', (err: any) => {
         this.logger.warn(`FFmpeg process error for "${printer.name}": ${err.message}`);
+        session.lastError = `FFmpeg: ${err.message}`;
         session.ffmpegProcess = null;
+        session.emitter.emit('streamError', session.lastError);
       });
 
       proc.on('close', (code) => {
         this.logger.log(`FFmpeg process closed for "${printer.name}" (code: ${code})`);
         session.ffmpegProcess = null;
+        if (code !== 0 && code !== null) {
+          session.lastError = stderrBuf.slice(-300).trim() || `FFmpeg завершился с кодом ${code}`;
+          session.emitter.emit('streamError', session.lastError);
+        }
       });
     } catch (err: any) {
       this.logger.error(`Failed to spawn ffmpeg: ${err.message}`);
@@ -430,9 +481,8 @@ export class PrinterCameraService implements OnModuleDestroy {
       );
     }
 
-    const cleanIp = printer.ipAddress.replace(/^https?:\/\//i, '').replace(/:.*$/, '').trim();
     const rawUrl = this.anycubicMqttService.getCameraUrl(printer.id);
-    const streamUrl = rawUrl || `http://${cleanIp}:18088/live`;
+    const streamUrl = this.buildAnycubicStreamUrl(printer.ipAddress, rawUrl);
     const ffmpegPath = this.getFfmpegPath();
 
     return new Promise<Buffer>((resolve, reject) => {
@@ -506,16 +556,8 @@ export class PrinterCameraService implements OnModuleDestroy {
       throw new ServiceUnavailableException('Printer has no IP address configured');
     }
 
-    // Set multipart headers
-    res.writeHead(200, {
-      'Content-Type': 'multipart/x-mixed-replace; boundary=frame',
-      'Cache-Control': 'no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0',
-      Pragma: 'no-cache',
-      Connection: 'keep-alive',
-      Expires: '0',
-    });
-
     if (printer.manufacturer === 'BAMBU_LAB') {
+      this.writeMjpegHeaders(res);
       const session = this.getOrCreateBambuSession(printerId);
       if (session.idleTimer) {
         clearTimeout(session.idleTimer);
@@ -584,22 +626,27 @@ export class PrinterCameraService implements OnModuleDestroy {
         return;
       }
 
-      session.clients.add(res);
-
-      if (session.latestFrame) {
-        this.broadcastFrame(new Set([res]), session.latestFrame);
-      }
-
       if (!session.ffmpegProcess || session.ffmpegProcess.killed) {
         try {
+          try {
+            await this.anycubicMqttService.setCameraCapture(printer.id, true);
+          } catch (err: any) {
+            this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${err.message}`);
+          }
           await this.startAnycubicFfmpeg(
             { id: printer.id, name: printer.name, ipAddress: printer.ipAddress },
             session,
           );
         } catch (err: any) {
           this.logger.error(`Failed to start Anycubic camera stream: ${err.message}`);
+          throw new ServiceUnavailableException(err.message);
         }
       }
+
+      await this.waitForAnycubicFrame(session);
+      this.writeMjpegHeaders(res);
+      session.clients.add(res);
+      this.broadcastFrame(new Set([res]), session.latestFrame!);
 
       res.on('close', () => {
         session.clients.delete(res);
@@ -609,6 +656,7 @@ export class PrinterCameraService implements OnModuleDestroy {
               this.logger.log(`Stopping idle Anycubic ffmpeg stream for "${printer.name}"`);
               session.ffmpegProcess.kill('SIGTERM');
               session.ffmpegProcess = null;
+              this.anycubicMqttService.setCameraCapture(printer.id, false).catch(() => {});
             }
           }, 15000);
         }
@@ -631,8 +679,6 @@ export class PrinterCameraService implements OnModuleDestroy {
     if (!printer.ipAddress) {
       throw new ServiceUnavailableException('Printer has no IP address configured');
     }
-
-    const cleanIp = printer.ipAddress.replace(/^https?:\/\//i, '').replace(/:.*$/, '').trim();
 
     if (printer.manufacturer === 'BAMBU_LAB') {
       const session = this.getOrCreateBambuSession(printerId);
@@ -721,10 +767,21 @@ export class PrinterCameraService implements OnModuleDestroy {
         });
       }
 
-      const frame = await this.captureAnycubicSnapshotOnce(
-        { id: printer.id, name: printer.name, ipAddress: printer.ipAddress },
-        session,
-      );
+      try {
+        await this.anycubicMqttService.setCameraCapture(printer.id, true);
+      } catch (err: any) {
+        this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${err.message}`);
+      }
+
+      let frame: Buffer;
+      try {
+        frame = await this.captureAnycubicSnapshotOnce(
+          { id: printer.id, name: printer.name, ipAddress: printer.ipAddress },
+          session,
+        );
+      } finally {
+        this.anycubicMqttService.setCameraCapture(printer.id, false).catch(() => {});
+      }
       session.latestFrame = frame;
       session.lastFrameTime = Date.now();
       return frame;
@@ -774,7 +831,17 @@ export class PrinterCameraService implements OnModuleDestroy {
       snapshotUrl: `/api/printers/${printerId}/camera/snapshot`,
       rateLimited: isRateLimited,
       rateLimitedUntil: isRateLimited ? new Date(anycubicSession!.rateLimitedUntil) : null,
-      errorMessage: isRateLimited ? anycubicSession?.lastError : null,
+      errorMessage: !isBambu ? anycubicSession?.lastError : null,
     };
+  }
+
+  private writeMjpegHeaders(res: Response) {
+    res.writeHead(200, {
+      'Content-Type': 'multipart/x-mixed-replace; boundary=frame',
+      'Cache-Control': 'no-cache, no-store, must-revalidate, pre-check=0, post-check=0, max-age=0',
+      Pragma: 'no-cache',
+      Connection: 'keep-alive',
+      Expires: '0',
+    });
   }
 }
