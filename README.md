@@ -64,6 +64,15 @@ before deploying the new API image (after taking a database backup):
 npx prisma migrate resolve --applied 20260917000000_init
 ```
 
+When deploying with Docker Compose, rebuild the image containing the migration and run the same
+one-time baseline inside the API service before starting it normally:
+
+```bash
+docker compose build --no-cache api
+docker compose run --rm api npx prisma migrate resolve --applied 20260917000000_init
+docker compose up -d
+```
+
 New installations and all subsequent deployments apply migrations automatically when the API
 container starts.
 

@@ -46,5 +46,8 @@ yarn-error.log*
 *.sql.gz
 backup_*.dump
 
+# Prisma migration SQL is application source and must be versioned.
+!prisma/migrations/**/*.sql
+
 # Coverage directory used by tools like istanbul
 coverage/

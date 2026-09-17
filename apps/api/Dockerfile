@@ -9,6 +9,9 @@ COPY packages/shared/package*.json ./packages/shared/
 COPY apps/api/package*.json ./apps/api/
 COPY prisma ./prisma/
 
+# Fail during image build instead of entering a restart loop at runtime.
+RUN test -f prisma/migrations/20260917000000_init/migration.sql
+
 RUN npm ci
 
 COPY packages/shared ./packages/shared
