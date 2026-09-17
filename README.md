@@ -51,6 +51,22 @@ INITIAL_OWNER_TELEGRAM_ID="your_telegram_id"
 JWT_SECRET="your_jwt_secret_key"
 ```
 
+Apply database migrations before starting the applications outside Docker:
+
+```bash
+npm run db:migrate:deploy
+```
+
+For an existing installation created before migrations were introduced, mark the baseline once
+before deploying the new API image (after taking a database backup):
+
+```bash
+npx prisma migrate resolve --applied 20260917000000_init
+```
+
+New installations and all subsequent deployments apply migrations automatically when the API
+container starts.
+
 ### Running with Docker Compose
 
 To start PostgreSQL, API, and Web containers:

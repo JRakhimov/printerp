@@ -1,6 +1,7 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { TelegramAuthService } from './telegram-auth.service';
-import { TelegramAuthDto } from '@printerp/shared';
+import { TelegramAuthDto, TelegramAuthSchema } from '@printerp/shared';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller('auth')
 export class AuthController {
@@ -8,7 +9,9 @@ export class AuthController {
 
   @Post('telegram')
   @HttpCode(HttpStatus.OK)
-  async authenticateTelegram(@Body() body: TelegramAuthDto) {
+  async authenticateTelegram(
+    @Body(new ZodValidationPipe(TelegramAuthSchema)) body: TelegramAuthDto,
+  ) {
     return this.telegramAuthService.authenticate(body.initData);
   }
 }

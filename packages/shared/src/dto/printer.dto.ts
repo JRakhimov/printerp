@@ -44,7 +44,8 @@ export type TestConnectionDto = z.infer<typeof TestConnectionSchema>;
 
 export const CreatePrintJobSchema = z.object({
   orderId: z.string().uuid(),
-  printerId: z.string().uuid(),
+  // The authoritative printer ID comes from /printers/:id/jobs.
+  printerId: z.string().uuid().optional(),
   orderItemId: z.string().uuid().optional().nullable(),
   filename: z.string().optional().nullable(),
   quantity: z.number().int().positive().optional().nullable(),
@@ -67,7 +68,7 @@ export interface PrinterResponse {
   model: string;
   serialNumber: string | null;
   ipAddress: string | null;
-  accessCode: string | null;
+  hasAccessCode: boolean;
   integrationType: PrinterIntegrationType;
   isActive: boolean;
   lastStatus: string | null;

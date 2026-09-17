@@ -1,4 +1,5 @@
-import { Injectable, Logger, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
 
@@ -13,6 +14,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   constructor(
     private readonly configService: ConfigService,
     private readonly prisma: PrismaService,
+    @Optional() private readonly moduleRef?: ModuleRef,
   ) {
     this.botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
     const isPlaceholder = !this.botToken || this.botToken.includes('ABCdefGHIjklMNOpqrsTUVwxyZ');
@@ -71,12 +73,19 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
    * Handle incoming updates from Telegram
    */
   private async handleUpdate(update: any) {
+    if (update.callback_query) {
+      await this.handleCallbackQuery(update.callback_query);
+      return;
+    }
+
     const message = update.message;
     if (!message || !message.text) return;
 
     const text = message.text.trim();
     if (text.startsWith('/start')) {
       await this.handleStartCommand(message);
+    } else if (text.startsWith('/camera') || text.startsWith('/photo')) {
+      await this.handleCameraListCommand(message);
     }
   }
 
@@ -125,6 +134,112 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       }
     } catch (err: any) {
       this.logger.error(`Error processing /start for chat ${chatId}:`, err?.message || err);
+    }
+  }
+
+  /**
+   * Process /camera or /photo command - list available printers with inline buttons
+   */
+  private async handleCameraListCommand(message: any) {
+    const chatId = message.chat.id.toString();
+    try {
+      const printers = await this.prisma.printer.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' },
+      });
+
+      if (printers.length === 0) {
+        await this.sendMessage(chatId, '📭 Активные 3D-принтеры не найдены.');
+        return;
+      }
+
+      const buttons = printers.map((p) => [
+        {
+          text: `📸 ${p.name} (${p.model || p.manufacturer})`,
+          callback_data: `cam_snap:${p.id}`,
+        },
+      ]);
+
+      await this.sendMessage(chatId, '📹 <b>Выберите принтер для получения снимка стола:</b>', {
+        inline_keyboard: buttons,
+      });
+    } catch (err: any) {
+      this.logger.error(`Error handling /camera command:`, err?.message || err);
+    }
+  }
+
+  /**
+   * Handle inline callback queries from Telegram buttons
+   */
+  private async handleCallbackQuery(query: any) {
+    const data = query.data;
+    const chatId = query.message?.chat?.id?.toString();
+    if (!data || !chatId) return;
+
+    try {
+      await fetch(`https://api.telegram.org/bot${this.botToken}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: query.id }),
+      });
+    } catch {}
+
+    if (data.startsWith('cam_snap:')) {
+      const printerId = data.replace('cam_snap:', '');
+      await this.handleCameraSnapshotRequest(chatId, printerId);
+    }
+  }
+
+  /**
+   * Handle camera snapshot request from inline button or command
+   */
+  private async handleCameraSnapshotRequest(chatId: string, printerId: string) {
+    try {
+      const printer = await this.prisma.printer.findUnique({
+        where: { id: printerId },
+      });
+
+      if (!printer) {
+        await this.sendMessage(chatId, '⚠️ Принтер не найден.');
+        return;
+      }
+
+      if (!this.moduleRef) return;
+
+      const { PrinterCameraService } = await import('../printers/printer-camera.service');
+      const cameraService = this.moduleRef.get(PrinterCameraService, { strict: false });
+
+      if (!cameraService) {
+        await this.sendMessage(chatId, '⚠️ Сервис камеры недоступен.');
+        return;
+      }
+
+      await this.sendMessage(chatId, `📸 <i>Получаю снимок с камеры принтера ${printer.name}...</i>`);
+
+      const frame = await cameraService.getSnapshot(printerId);
+      const timeStr = new Date().toLocaleTimeString('ru-RU', {
+        timeZone: this.getTimeZone(),
+        hour: '2-digit',
+        minute: '2-digit',
+      });
+      const caption = `📸 <b>${printer.name}</b> (${printer.model || printer.manufacturer})\n🕒 <i>Время: ${timeStr}</i>`;
+
+      await this.sendPhoto(chatId, frame, caption, {
+        inline_keyboard: [
+          [
+            {
+              text: '🔄 Обновить фото',
+              callback_data: `cam_snap:${printerId}`,
+            },
+          ],
+        ],
+      });
+    } catch (err: any) {
+      this.logger.error(`Failed to handle camera snapshot for printer ${printerId}:`, err?.message || err);
+      await this.sendMessage(
+        chatId,
+        `⚠️ Не удалось получить снимок с камеры принтера: ${err?.message || 'Таймаут'}`,
+      );
     }
   }
 
@@ -460,12 +575,63 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
       const messageText = this.formatPrinterStatusMessage(data);
 
+      const replyMarkup = data.printerId
+        ? {
+            inline_keyboard: [
+              [
+                {
+                  text: '📸 Снимок с камеры',
+                  callback_data: `cam_snap:${data.printerId}`,
+                },
+              ],
+            ],
+          }
+        : undefined;
+
       for (const user of recipients) {
         const chatId = user.telegramId.toString();
-        this.sendMessage(chatId, messageText);
+        if (replyMarkup) {
+          this.sendMessage(chatId, messageText, replyMarkup);
+        } else {
+          this.sendMessage(chatId, messageText);
+        }
       }
     } catch (err: any) {
       this.logger.error('Failed to process printer status notification:', err?.message || err);
+    }
+  }
+
+  /**
+   * Helper to send photo via Telegram Bot API
+   */
+  async sendPhoto(chatId: string, photoBuffer: Buffer, caption?: string, replyMarkup?: any) {
+    if (!this.isEnabled) return;
+
+    try {
+      const url = `https://api.telegram.org/bot${this.botToken}/sendPhoto`;
+      const formData = new FormData();
+      formData.append('chat_id', chatId);
+      const blob = new Blob([new Uint8Array(photoBuffer)], { type: 'image/jpeg' });
+      formData.append('photo', blob, 'snapshot.jpg');
+      if (caption) {
+        formData.append('caption', caption);
+        formData.append('parse_mode', 'HTML');
+      }
+      if (replyMarkup) {
+        formData.append('reply_markup', JSON.stringify(replyMarkup));
+      }
+
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const body = await response.text();
+        this.logger.warn(`Failed to send Telegram photo to ${chatId}: ${body}`);
+      }
+    } catch (err: any) {
+      this.logger.error(`Error sending Telegram photo to ${chatId}:`, err?.message || err);
     }
   }
 
@@ -505,6 +671,7 @@ export type PrinterEventType =
   | 'CANCELLED';
 
 export interface PrinterStatusNotificationData {
+  printerId?: string;
   printerName: string;
   printerModel?: string;
   eventType: PrinterEventType;

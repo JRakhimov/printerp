@@ -248,36 +248,42 @@ export const FinancePage: React.FC = () => {
 
       {/* Scrap & Defect Losses Metric */}
       {summary?.scrapLoss && summary.scrapLoss.totalScrapCost > 0 && (
-        <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-4 flex items-center justify-between shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shrink-0">
+        <div className="bg-rose-50 border border-rose-200 dark:bg-slate-900 dark:border-rose-500/30 rounded-2xl p-4 space-y-3 shadow-sm">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-xl bg-white border border-rose-200 text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <div>
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-bold text-slate-800 dark:text-white leading-tight">
                   Потери от брака и отходов
-                  <span className="text-[10px] font-semibold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
-                    {summary.scrapLoss.incidentsCount} {summary.scrapLoss.incidentsCount === 1 ? 'запись' : 'записей'}
-                  </span>
                 </h4>
-                {summary.scrapLoss.scrapRatePercentage > 0 && (
-                  <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
-                    {summary.scrapLoss.scrapRatePercentage}% уровень брака
-                  </span>
-                )}
+                <span className="text-[10px] font-semibold text-rose-800 bg-rose-100 px-2 py-0.5 rounded-full border border-rose-200 dark:text-rose-300 dark:bg-rose-500/10 dark:border-rose-500/20 whitespace-nowrap">
+                    {summary.scrapLoss.incidentsCount} {summary.scrapLoss.incidentsCount === 1 ? 'запись' : 'записей'}
+                </span>
               </div>
-              <p className="text-[11px] text-slate-400 mt-0.5">
-                Списано {summary.scrapLoss.totalScrapG.toLocaleString('ru-RU')} г пластика (продувка Bambu Lab, брак печати, тесты)
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-1 leading-relaxed">
+                Списано {summary.scrapLoss.totalScrapG.toLocaleString('ru-RU')} г пластика
               </p>
             </div>
-          </div>
-          <div className="text-right shrink-0">
-            <span className="text-sm font-extrabold text-rose-400 font-mono block">
+            <div className="text-right shrink-0 pl-1">
+              <span className="text-base font-extrabold text-rose-700 dark:text-rose-400 font-mono block whitespace-nowrap tabular-nums">
               -{summary.scrapLoss.totalScrapCost.toLocaleString('ru-RU')} сум
-            </span>
-            <span className="text-[10px] text-slate-500">
-              себестоимость потерь
+              </span>
+              <span className="text-[10px] text-slate-500 dark:text-slate-400 whitespace-nowrap">
+                себестоимость потерь
+              </span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap pl-[3.25rem]">
+            {summary.scrapLoss.scrapRatePercentage > 0 && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2 py-1 rounded-lg border border-amber-200 dark:text-amber-300 dark:bg-amber-500/10 dark:border-amber-500/20 whitespace-nowrap">
+                {summary.scrapLoss.scrapRatePercentage}% уровень брака
+              </span>
+            )}
+            <span className="text-[10px] text-slate-500 dark:text-slate-400">
+              Продувка, неудачные печати и тесты
             </span>
           </div>
         </div>
@@ -333,13 +339,13 @@ export const FinancePage: React.FC = () => {
       <div className="space-y-3">
         {/* Row: Top Defective Models (shown only if defects exist) */}
         {topScrapModels && topScrapModels.length > 0 && (
-          <div className="bg-slate-900 border border-rose-500/30 rounded-2xl p-4 space-y-2.5 shadow-sm">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-white flex items-center gap-1.5">
-                <AlertTriangle className="w-4 h-4 text-rose-400" />
+          <div className="bg-white border border-rose-200 dark:bg-slate-900 dark:border-rose-500/30 rounded-2xl p-4 space-y-3 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <h4 className="text-sm font-bold text-slate-800 dark:text-white flex items-center gap-2 min-w-0">
+                <AlertTriangle className="w-4 h-4 text-rose-700 dark:text-rose-400 shrink-0" />
                 Топ моделей с наибольшим браком
               </h4>
-              <span className="text-[10px] text-rose-400 font-semibold bg-rose-500/10 px-2 py-0.5 rounded-full border border-rose-500/20">
+              <span className="text-[10px] text-rose-800 dark:text-rose-300 font-semibold bg-rose-50 dark:bg-rose-500/10 px-2 py-1 rounded-full border border-rose-200 dark:border-rose-500/20 whitespace-nowrap shrink-0">
                 По числу брака
               </span>
             </div>
@@ -348,34 +354,33 @@ export const FinancePage: React.FC = () => {
               {topScrapModels.map((tm, idx) => (
                 <div
                   key={tm.id}
-                  className="flex items-center justify-between text-xs bg-rose-950/20 p-2.5 rounded-xl border border-rose-900/30 transition"
+                  className="flex items-center justify-between gap-3 text-xs bg-rose-50 p-3 rounded-xl border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/30 transition"
                 >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <span className="text-xs font-extrabold text-rose-400 w-5 shrink-0 text-center">
+                  <div className="flex items-start gap-2.5 min-w-0">
+                    <span className="w-7 h-7 rounded-lg bg-white border border-rose-200 text-xs font-extrabold text-rose-700 dark:bg-rose-500/10 dark:border-rose-500/20 dark:text-rose-400 shrink-0 flex items-center justify-center">
                       #{idx + 1}
                     </span>
                     <div className="min-w-0">
-                      <span className="font-semibold text-white block truncate">
+                      <span className="font-bold text-slate-800 dark:text-white block truncate">
                         {tm.name}
                       </span>
-                      <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5 flex-wrap">
-                        <span className="text-rose-300 font-bold">{tm.defectsCount} {tm.defectsCount === 1 ? 'брак' : (tm.defectsCount >= 2 && tm.defectsCount <= 4 ? 'брака' : 'браков')}</span>
+                      <div className="flex items-center gap-1.5 text-[10px] text-slate-600 dark:text-slate-400 mt-1 flex-wrap">
+                        <span className="text-rose-700 dark:text-rose-300 font-bold">{tm.defectsCount} {tm.defectsCount === 1 ? 'брак' : (tm.defectsCount >= 2 && tm.defectsCount <= 4 ? 'брака' : 'браков')}</span>
                         <span>&bull;</span>
                         <span>{tm.totalGrams} г списано</span>
-                        {tm.topReason && (
-                          <>
-                            <span>&bull;</span>
-                            <span className="text-amber-300/90 truncate font-medium">Часто: {tm.topReason}</span>
-                          </>
-                        )}
                       </div>
+                      {tm.topReason && (
+                        <span className="text-[10px] text-amber-800 dark:text-amber-300 font-medium block mt-1 break-words">
+                          Частая причина: {tm.topReason}
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="text-right shrink-0 ml-2">
-                    <span className="font-bold text-rose-400 block font-mono">
+                    <span className="font-bold text-rose-700 dark:text-rose-400 block font-mono whitespace-nowrap tabular-nums">
                       -{tm.totalCost.toLocaleString('ru-RU')} сум
                     </span>
-                    <span className="text-[9px] text-slate-500 uppercase font-semibold">Убыток</span>
+                    <span className="text-[9px] text-slate-500 dark:text-slate-400 uppercase font-semibold">Убыток</span>
                   </div>
                 </div>
               ))}

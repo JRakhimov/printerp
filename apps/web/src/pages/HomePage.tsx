@@ -5,6 +5,7 @@ import { usePrinters } from '../hooks/usePrinters';
 import { useTimeCycle, formatEstimatedFinish } from '../hooks/useTimeCycle';
 import { getClientDisplayName } from '@printerp/shared';
 import { OrderDetailModal } from '../components/OrderDetailModal';
+import { PrinterCameraModal } from '../components/PrinterCameraModal';
 import {
   Package,
   Printer,
@@ -20,6 +21,7 @@ import {
   FileCode,
   ShoppingBag,
   Calendar,
+  Camera,
 } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
@@ -28,6 +30,7 @@ export const HomePage: React.FC = () => {
   const { data: summary } = useFinancialSummary();
   const { data: printers } = usePrinters();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
+  const [cameraPrinter, setCameraPrinter] = useState<any | null>(null);
 
   // Active orders count & printing status count
   const activeOrders = orders?.filter((o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED) || [];
@@ -224,22 +227,32 @@ export const HomePage: React.FC = () => {
                       <span className="font-bold text-white">{printer.name}</span>
                     </div>
 
-                    <span
-                      className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
-                        isPrinting
-                          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
-                          : isPaused
-                          ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
-                          : 'bg-slate-800 text-slate-400 border-slate-700'
-                      }`}
-                    >
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        onClick={() => setCameraPrinter(printer)}
+                        className="p-1 text-slate-400 hover:text-emerald-400 bg-slate-900 hover:bg-slate-800 border border-slate-800 rounded-lg transition"
+                        title="Камера принтера"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                      </button>
+
                       <span
-                        className={`w-1.5 h-1.5 rounded-full ${
-                          isPrinting ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
+                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full border flex items-center gap-1 ${
+                          isPrinting
+                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                            : isPaused
+                            ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                            : 'bg-slate-800 text-slate-400 border-slate-700'
                         }`}
-                      />
-                      {statusText}
-                    </span>
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            isPrinting ? 'bg-emerald-400 animate-pulse' : 'bg-slate-400'
+                          }`}
+                        />
+                        {statusText}
+                      </span>
+                    </div>
                   </div>
 
                   {isPrinting && (
@@ -405,6 +418,13 @@ export const HomePage: React.FC = () => {
 
       {/* Order Detail Modal */}
       <OrderDetailModal orderId={selectedOrderId} onClose={() => setSelectedOrderId(null)} />
+
+      {/* Printer Camera Modal */}
+      <PrinterCameraModal
+        printer={cameraPrinter}
+        isOpen={!!cameraPrinter}
+        onClose={() => setCameraPrinter(null)}
+      />
     </div>
   );
 };

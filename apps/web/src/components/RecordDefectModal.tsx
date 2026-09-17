@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   X,
   AlertTriangle,
@@ -40,38 +40,45 @@ export const RecordDefectModal: React.FC<RecordDefectModalProps> = ({
   const [reprint, setReprint] = useState<boolean>(true);
   const [reprintPrinterId, setReprintPrinterId] = useState<string>('');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const initializedItemRef = useRef<string | null>(null);
 
-  // Initialize values when item changes or modal opens
+  // Reset editable values only once per modal session/item. Live printer and
+  // filament queries refetch in the background and must not erase user input.
   useEffect(() => {
-    if (isOpen && item) {
-      setErrorMsg(null);
-      // Try to find matching filament from project
-      let initialFilamentId = '';
-      let initialGrams = 50;
-
-      const projectFilaments = (item.project as any)?.projectFilaments;
-      if (projectFilaments && projectFilaments.length > 0) {
-        initialFilamentId = projectFilaments[0].filamentId;
-        initialGrams = projectFilaments[0].grams || item.project?.weightG || 50;
-      } else if (item.project?.weightG) {
-        initialGrams = item.project.weightG;
-      }
-
-      if (!initialFilamentId && filaments && filaments.length > 0) {
-        initialFilamentId = filaments[0].id;
-      }
-
-      setFilamentId(initialFilamentId);
-      setGrams(initialGrams);
-      setReason(ScrapReason.BED_ADHESION);
-      setComment('');
-      setReprint(true);
-
-      if (printers && printers.length > 0) {
-        setReprintPrinterId(printers[0].id);
-      }
+    if (!isOpen || !item) {
+      initializedItemRef.current = null;
+      return;
     }
-  }, [isOpen, item, filaments, printers]);
+
+    const initializationKey = `${orderId}:${item.id}`;
+    if (initializedItemRef.current === initializationKey) return;
+    initializedItemRef.current = initializationKey;
+
+    const projectFilaments = (item.project as any)?.projectFilaments;
+    const projectFilament = projectFilaments?.[0];
+
+    setErrorMsg(null);
+    setFilamentId(projectFilament?.filamentId || '');
+    setGrams(projectFilament?.grams || item.project?.weightG || 50);
+    setReason(ScrapReason.BED_ADHESION);
+    setComment('');
+    setReprint(true);
+    setReprintPrinterId('');
+  }, [isOpen, item, orderId]);
+
+  // Lists may arrive after the modal opens. Fill an empty selection without
+  // resetting any field the user has already edited.
+  useEffect(() => {
+    if (isOpen && !filamentId && filaments?.length) {
+      setFilamentId(filaments[0].id);
+    }
+  }, [isOpen, filamentId, filaments]);
+
+  useEffect(() => {
+    if (isOpen && !reprintPrinterId && printers?.length) {
+      setReprintPrinterId(printers[0].id);
+    }
+  }, [isOpen, reprintPrinterId, printers]);
 
   if (!isOpen || !item) return null;
 

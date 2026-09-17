@@ -4,14 +4,17 @@ import { PrismaService } from '../src/database/prisma.service';
 import { OrderStatus, PaymentStatus } from '@prisma/client';
 
 import { TelegramBotService } from '../src/modules/telegram-bot/telegram-bot.service';
+import { OrderInventoryService } from '../src/modules/orders/order-inventory.service';
 
 describe('OrdersService', () => {
   let service: OrdersService;
   let prismaMock: any;
   let telegramBotMock: any;
+  let inventoryMock: any;
 
   beforeEach(async () => {
     prismaMock = {
+      $transaction: jest.fn((callback: (tx: any) => unknown) => callback(prismaMock)),
       client: {
         findFirst: jest.fn(),
       },
@@ -30,12 +33,17 @@ describe('OrdersService', () => {
       notifyNewOrder: jest.fn(),
       notifyStatusChange: jest.fn(),
     };
+    inventoryMock = {
+      deduct: jest.fn(),
+      restore: jest.fn(),
+    };
 
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         OrdersService,
         { provide: PrismaService, useValue: prismaMock },
         { provide: TelegramBotService, useValue: telegramBotMock },
+        { provide: OrderInventoryService, useValue: inventoryMock },
       ],
     }).compile();
 
@@ -80,6 +88,7 @@ describe('OrdersService', () => {
 
       const result: any = await service.create(userId, dto);
 
+      expect(prismaMock.$transaction).toHaveBeenCalledTimes(1);
       expect(prismaMock.order.create).toHaveBeenCalled();
       expect(result.calculatedCost).toBe(130000); // 100,000 + 30,000
       expect(result.calculatedPrice).toBe(320000); // 240,000 + 80,000

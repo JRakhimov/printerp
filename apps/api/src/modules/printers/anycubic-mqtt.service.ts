@@ -53,6 +53,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       percent?: number;
       nozzleTemp?: number;
       bedTemp?: number;
+      cameraUrl?: string;
     }
   >();
 
@@ -387,8 +388,12 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     let nozzleTemp: number | undefined;
     let bedTemp: number | undefined;
     let currentFile: string | undefined;
+    let cameraUrl: string | undefined;
 
     if (reportType === 'info' && data) {
+      if (data.urls?.rtspUrl) {
+        cameraUrl = data.urls.rtspUrl;
+      }
       const topState = data.state; // "free" | "busy"
       const project = data.project || data.last_project || {};
       const projectState = project.state; // (if present in some firmware)
@@ -472,6 +477,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       ...(percent !== undefined && { percent }),
       ...(nozzleTemp !== undefined && { nozzleTemp }),
       ...(bedTemp !== undefined && { bedTemp }),
+      ...(cameraUrl !== undefined && { cameraUrl }),
     };
     this.cachedTelemetry.set(printerId, updatedCached);
 
@@ -664,6 +670,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         const dedupeKey = `${currentFile || 'unknown'}_${orderNumber || '0'}`;
         if (this.lastNotifiedStart.get(printerId) === dedupeKey && prevStatus === 'PAUSED') {
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'RESUMED',
@@ -678,6 +685,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         } else {
           this.lastNotifiedStart.set(printerId, dedupeKey);
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'STARTED',
@@ -695,6 +703,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
       if (newStatus === 'PAUSED') {
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'PAUSED',
@@ -744,6 +753,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
           : undefined;
 
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'FINISHED',
@@ -763,6 +773,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       if (newStatus === 'FAILED') {
         this.printStartTimes.delete(printerId);
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'FAILED',
@@ -908,5 +919,12 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         });
       });
     });
+  }
+
+  /**
+   * Get dynamic camera stream URL reported by printer telemetry
+   */
+  getCameraUrl(printerId: string): string | undefined {
+    return this.cachedTelemetry.get(printerId)?.cameraUrl;
   }
 }

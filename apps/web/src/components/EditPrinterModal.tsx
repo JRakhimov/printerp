@@ -55,7 +55,7 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
         name: printer.name,
         model: printer.model,
         ipAddress: printer.ipAddress || '',
-        accessCode: printer.accessCode || '',
+        accessCode: '',
         serialNumber: printer.serialNumber || '',
         isActive: printer.isActive,
         initialWorkHours: printer.initialWorkHours !== null && printer.initialWorkHours !== undefined ? printer.initialWorkHours : 0,
@@ -109,7 +109,11 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
 
   const onSubmit = async (data: UpdatePrinterDto) => {
     try {
-      await updatePrinter.mutateAsync({ id: printer.id, dto: data });
+      const dto = { ...data };
+      if (!dto.accessCode) {
+        delete dto.accessCode;
+      }
+      await updatePrinter.mutateAsync({ id: printer.id, dto });
       onClose();
     } catch (err: any) {
       console.error('Failed to update printer:', err);

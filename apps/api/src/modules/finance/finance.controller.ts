@@ -7,11 +7,18 @@ import {
   Param,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { FinanceService } from './finance.service';
-import { CreateTransactionDto, TransactionQueryDto } from '@printerp/shared';
+import {
+  CreateTransactionDto,
+  CreateTransactionSchema,
+  TransactionQueryDto,
+  TransactionQuerySchema,
+} from '@printerp/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller('finance')
 @UseGuards(JwtAuthGuard)
@@ -20,19 +27,21 @@ export class FinanceController {
 
   @Post('transactions')
   async createTransaction(
-    @Body() dto: CreateTransactionDto,
+    @Body(new ZodValidationPipe(CreateTransactionSchema)) dto: CreateTransactionDto,
     @CurrentUser('id') userId?: string,
   ) {
     return this.financeService.createTransaction(dto, userId);
   }
 
   @Get('transactions')
-  async findAllTransactions(@Query() query: TransactionQueryDto) {
+  async findAllTransactions(
+    @Query(new ZodValidationPipe(TransactionQuerySchema)) query: TransactionQueryDto,
+  ) {
     return this.financeService.findAllTransactions(query);
   }
 
   @Delete('transactions/:id')
-  async deleteTransaction(@Param('id') id: string) {
+  async deleteTransaction(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.financeService.deleteTransaction(id);
   }
 

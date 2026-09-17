@@ -1,15 +1,16 @@
-import React, { useState } from 'react';
+import React, { Suspense, lazy, useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { Header } from './components/Header';
 import { BottomNav, TabType } from './components/BottomNav';
 import { AccessDenied } from './components/AccessDenied';
-import { HomePage } from './pages/HomePage';
-import { OrdersPage } from './pages/OrdersPage';
-import { ProjectsPage } from './pages/ProjectsPage';
-import { MorePage } from './pages/MorePage';
 import { Loader2 } from 'lucide-react';
+
+const HomePage = lazy(() => import('./pages/HomePage').then((module) => ({ default: module.HomePage })));
+const OrdersPage = lazy(() => import('./pages/OrdersPage').then((module) => ({ default: module.OrdersPage })));
+const ProjectsPage = lazy(() => import('./pages/ProjectsPage').then((module) => ({ default: module.ProjectsPage })));
+const MorePage = lazy(() => import('./pages/MorePage').then((module) => ({ default: module.MorePage })));
 
 const queryClient = new QueryClient();
 
@@ -47,10 +48,18 @@ const MainContent: React.FC = () => {
     <div className="min-h-screen bg-slate-950 flex flex-col">
       <Header />
       <main className="flex-1 p-4 pb-[calc(5rem+env(safe-area-inset-bottom,0px))] max-w-md mx-auto w-full">
-        {activeTab === 'home' && <HomePage />}
-        {activeTab === 'orders' && <OrdersPage />}
-        {activeTab === 'projects' && <ProjectsPage />}
-        {activeTab === 'more' && <MorePage resetSignal={moreResetSignal} />}
+        <Suspense
+          fallback={
+            <div className="py-16 flex justify-center text-slate-400">
+              <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+            </div>
+          }
+        >
+          {activeTab === 'home' && <HomePage />}
+          {activeTab === 'orders' && <OrdersPage />}
+          {activeTab === 'projects' && <ProjectsPage />}
+          {activeTab === 'more' && <MorePage resetSignal={moreResetSignal} />}
+        </Suspense>
       </main>
       <BottomNav activeTab={activeTab} onSelectTab={handleSelectTab} />
     </div>

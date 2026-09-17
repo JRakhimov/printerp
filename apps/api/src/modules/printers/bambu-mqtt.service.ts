@@ -524,6 +524,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         if (newStatus === 'PREPARE') {
           this.hasNotifiedRunning.set(printerId, false);
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'STARTED',
@@ -540,6 +541,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           // Direct start without PREPARE
           this.hasNotifiedRunning.set(printerId, true);
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'STARTED',
@@ -560,6 +562,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         this.hasNotifiedRunning.set(printerId, true);
         this.lastNotifiedStart.set(printerId, currentFile || 'unknown');
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'STARTED',
@@ -582,6 +585,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
             : undefined;
 
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'PAUSED',
@@ -598,6 +602,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       // 3. RESUMED
       if (prevStatus === 'PAUSED' && newStatus === 'RUNNING') {
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'RESUMED',
@@ -644,6 +649,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         const totalWorkHours = Number((initialH + trackedM / 60).toFixed(1));
 
         await this.telegramBotService.notifyPrinterStatus({
+          printerId,
           printerName,
           printerModel,
           eventType: 'FINISHED',
@@ -666,6 +672,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
 
         if (isCancelled) {
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'CANCELLED',
@@ -677,6 +684,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         } else {
           const errorMsg = this.telegramBotService.formatBambuError(telemetry.printError, telemetry.failReason);
           await this.telegramBotService.notifyPrinterStatus({
+            printerId,
             printerName,
             printerModel,
             eventType: 'FAILED',

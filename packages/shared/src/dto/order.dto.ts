@@ -40,8 +40,14 @@ export const ChangeOrderStatusSchema = z.object({
   comment: z.string().optional(),
 });
 
+export const OrderQuerySchema = z.object({
+  status: z.nativeEnum(OrderStatus).optional(),
+  search: z.string().trim().optional(),
+});
+
 export type OrderItemFilamentInputDto = z.infer<typeof OrderItemFilamentInputSchema>;
 export type OrderItemInputDto = z.infer<typeof OrderItemInputSchema>;
 export type CreateOrderDto = z.infer<typeof CreateOrderSchema>;
 export type UpdateOrderDto = z.infer<typeof UpdateOrderSchema>;
 export type ChangeOrderStatusDto = z.infer<typeof ChangeOrderStatusSchema>;
+export type OrderQueryDto = z.infer<typeof OrderQuerySchema>;

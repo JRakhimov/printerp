@@ -9,22 +9,23 @@
   ],
   "scripts": {
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/api && npm run build --workspace=apps/web",
-    "dev": "npm run start:dev --workspace=apps/api && npm run dev --workspace=apps/web",
     "typecheck": "npm run typecheck --workspace=packages/shared && npm run typecheck --workspace=apps/api && npm run typecheck --workspace=apps/web",
     "lint": "npm run lint --workspace=apps/api && npm run lint --workspace=apps/web",
     "test": "npm run test --workspace=apps/api",
     "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:push": "prisma db push",
     "db:seed": "ts-node --transpile-only prisma/seed.ts",
     "dev:api": "npm run start:dev --workspace=apps/api",
     "dev:web": "npm run dev --workspace=apps/web"
   },
   "devDependencies": {
-    "prisma": "^5.19.1",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.4"
   },
   "dependencies": {
-    "mqtt": "^5.15.2"
+    "mqtt": "^5.15.2",
+    "prisma": "^5.19.1"
   }
 }

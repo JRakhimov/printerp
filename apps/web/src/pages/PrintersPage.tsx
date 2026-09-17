@@ -6,6 +6,7 @@ import {
 } from '../hooks/usePrinters';
 import { CreatePrinterModal } from '../components/CreatePrinterModal';
 import { EditPrinterModal } from '../components/EditPrinterModal';
+import { PrinterCameraModal } from '../components/PrinterCameraModal';
 import { useTimeCycle, formatEstimatedFinish } from '../hooks/useTimeCycle';
 import { PrinterResponse } from '@printerp/shared';
 import {
@@ -21,6 +22,7 @@ import {
   RefreshCw,
   Zap,
   Gauge,
+  Camera,
 } from 'lucide-react';
 
 export const PrintersPage: React.FC = () => {
@@ -31,6 +33,7 @@ export const PrintersPage: React.FC = () => {
 
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingPrinter, setEditingPrinter] = useState<PrinterResponse | null>(null);
+  const [cameraPrinter, setCameraPrinter] = useState<PrinterResponse | null>(null);
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testMessages, setTestMessages] = useState<Record<string, { success: boolean; message: string }>>({});
 
@@ -42,12 +45,13 @@ export const PrintersPage: React.FC = () => {
 
   const handleTestSingleLink = async (printer: PrinterResponse) => {
     const isAny = printer.manufacturer === 'ANYCUBIC';
-    if (!printer.ipAddress || (!isAny && !printer.accessCode)) {
-      alert(
-        isAny
-          ? 'Пожалуйста, укажите IP-адрес для этого принтера Anycubic.'
-          : 'Пожалуйста, сначала настройте IP-адрес и код доступа LAN Access Code для этого принтера.',
-      );
+    if (!printer.ipAddress) {
+      alert('Пожалуйста, сначала укажите IP-адрес принтера.');
+      return;
+    }
+    if (!isAny) {
+      setEditingPrinter(printer);
+      alert('Для безопасной проверки повторно введите LAN Access Code в форме редактирования.');
       return;
     }
 
@@ -55,7 +59,6 @@ export const PrintersPage: React.FC = () => {
     try {
       const res = await testConnection.mutateAsync({
         ipAddress: printer.ipAddress,
-        accessCode: printer.accessCode || undefined,
         serialNumber: printer.serialNumber || undefined,
         manufacturer: printer.manufacturer,
       });
@@ -360,18 +363,29 @@ export const PrintersPage: React.FC = () => {
 
                 {/* Actions Toolbar */}
                 <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
-                  <button
-                    onClick={() => handleTestSingleLink(printer)}
-                    disabled={testingId === printer.id}
-                    className="px-2.5 py-1.5 text-[11px] font-semibold bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl flex items-center gap-1.5 transition"
-                  >
-                    {testingId === printer.id ? (
-                      <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />
-                    ) : (
-                      <Wifi className="w-3 h-3 text-sky-400" />
-                    )}
-                    <span>Проверить связь</span>
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={() => setCameraPrinter(printer)}
+                      className="px-2.5 py-1.5 text-[11px] font-semibold bg-emerald-950/40 hover:bg-emerald-900/50 border border-emerald-800/50 text-emerald-300 rounded-xl flex items-center gap-1.5 transition shadow-sm"
+                      title="Открыть камеру принтера"
+                    >
+                      <Camera className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Камера</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleTestSingleLink(printer)}
+                      disabled={testingId === printer.id}
+                      className="px-2.5 py-1.5 text-[11px] font-semibold bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-300 rounded-xl flex items-center gap-1.5 transition"
+                    >
+                      {testingId === printer.id ? (
+                        <Loader2 className="w-3 h-3 animate-spin text-emerald-400" />
+                      ) : (
+                        <Wifi className="w-3 h-3 text-sky-400" />
+                      )}
+                      <span>Связь</span>
+                    </button>
+                  </div>
 
                   <div className="flex items-center gap-1.5">
                     <button
@@ -405,6 +419,11 @@ export const PrintersPage: React.FC = () => {
         printer={editingPrinter}
         isOpen={!!editingPrinter}
         onClose={() => setEditingPrinter(null)}
+      />
+      <PrinterCameraModal
+        printer={cameraPrinter}
+        isOpen={!!cameraPrinter}
+        onClose={() => setCameraPrinter(null)}
       />
     </div>
   );

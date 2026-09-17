@@ -1,9 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, Query, UseGuards, ParseUUIDPipe } from '@nestjs/common';
 import { OrdersService } from './orders.service';
-import { CreateOrderDto, UpdateOrderDto, ChangeOrderStatusDto } from '@printerp/shared';
+import {
+  CreateOrderDto,
+  CreateOrderSchema,
+  UpdateOrderDto,
+  UpdateOrderSchema,
+  ChangeOrderStatusDto,
+  ChangeOrderStatusSchema,
+  OrderQueryDto,
+  OrderQuerySchema,
+} from '@printerp/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
-import { OrderStatus } from '@prisma/client';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -11,43 +20,43 @@ export class OrdersController {
   constructor(private readonly ordersService: OrdersService) {}
 
   @Post()
-  create(@CurrentUser() user: any, @Body() createOrderDto: CreateOrderDto) {
+  create(
+    @CurrentUser() user: any,
+    @Body(new ZodValidationPipe(CreateOrderSchema)) createOrderDto: CreateOrderDto,
+  ) {
     return this.ordersService.create(user.id, createOrderDto);
   }
 
   @Get()
-  findAll(
-    @Query('status') status?: OrderStatus,
-    @Query('search') search?: string,
-  ) {
-    return this.ordersService.findAll({ status, search });
+  findAll(@Query(new ZodValidationPipe(OrderQuerySchema)) query: OrderQueryDto) {
+    return this.ordersService.findAll(query);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.ordersService.findOne(id);
   }
 
   @Patch(':id/status')
   updateStatus(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() user: any,
-    @Body() changeStatusDto: ChangeOrderStatusDto,
+    @Body(new ZodValidationPipe(ChangeOrderStatusSchema)) changeStatusDto: ChangeOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, user.id, changeStatusDto);
   }
 
   @Patch(':id')
   update(
-    @Param('id') id: string,
+    @Param('id', new ParseUUIDPipe()) id: string,
     @CurrentUser() user: any,
-    @Body() updateOrderDto: UpdateOrderDto,
+    @Body(new ZodValidationPipe(UpdateOrderSchema)) updateOrderDto: UpdateOrderDto,
   ) {
     return this.ordersService.update(id, user.id, updateOrderDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: string) {
+  remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.ordersService.remove(id);
   }
 }

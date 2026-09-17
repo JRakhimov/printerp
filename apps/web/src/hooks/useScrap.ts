@@ -93,7 +93,7 @@ export function useCreateScrapRecord() {
       queryClient.invalidateQueries({ queryKey: ['printers'] });
       if (data.orderId) {
         queryClient.invalidateQueries({ queryKey: ['orders'] });
-        queryClient.invalidateQueries({ queryKey: ['order', data.orderId] });
+        queryClient.invalidateQueries({ queryKey: ['orders', data.orderId] });
       }
     },
   });

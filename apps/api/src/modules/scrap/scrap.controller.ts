@@ -7,6 +7,7 @@ import {
   Param,
   Query,
   UseGuards,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { CurrentUser } from '../auth/current-user.decorator';
@@ -17,6 +18,7 @@ import {
   ScrapQueryDto,
   ScrapQuerySchema,
 } from '@printerp/shared';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller('scrap')
 @UseGuards(JwtAuthGuard)
@@ -24,15 +26,16 @@ export class ScrapController {
   constructor(private readonly scrapService: ScrapService) {}
 
   @Post()
-  async create(@CurrentUser('id') userId: string | undefined, @Body() body: unknown) {
-    const dto: CreateScrapRecordDto = CreateScrapRecordSchema.parse(body);
+  async create(
+    @CurrentUser('id') userId: string | undefined,
+    @Body(new ZodValidationPipe(CreateScrapRecordSchema)) dto: CreateScrapRecordDto,
+  ) {
     return this.scrapService.create(userId, dto);
   }
 
   @Get()
-  async findAll(@Query() query: unknown) {
-    const parsedQuery: ScrapQueryDto = ScrapQuerySchema.parse(query);
-    return this.scrapService.findAll(parsedQuery);
+  async findAll(@Query(new ZodValidationPipe(ScrapQuerySchema)) query: ScrapQueryDto) {
+    return this.scrapService.findAll(query);
   }
 
   @Get('summary')
@@ -41,7 +44,7 @@ export class ScrapController {
   }
 
   @Delete(':id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.scrapService.remove(id);
   }
 }

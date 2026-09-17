@@ -12,6 +12,7 @@ import {
   OrderStatus,
   PrinterManufacturer,
 } from '@printerp/shared';
+import { omitPrinterSecrets, toPrinterResponse } from './printer-response.mapper';
 
 @Injectable()
 export class PrintersService {
@@ -41,42 +42,7 @@ export class PrintersService {
       },
     });
 
-    return printers.map((p) => {
-      const activeJob = p.printJobs[0];
-      return {
-        id: p.id,
-        name: p.name,
-        manufacturer: p.manufacturer as unknown as PrinterResponse['manufacturer'],
-        model: p.model,
-        serialNumber: p.serialNumber,
-        ipAddress: p.ipAddress,
-        accessCode: p.accessCode,
-        integrationType: p.integrationType as unknown as PrinterResponse['integrationType'],
-        isActive: p.isActive,
-        lastStatus: p.lastStatus,
-        lastSeenAt: p.lastSeenAt ? p.lastSeenAt.toISOString() : null,
-        nozzleTemp: p.nozzleTemp,
-        bedTemp: p.bedTemp,
-        printProgress: p.printProgress,
-        remainingMinutes: p.remainingMinutes,
-        currentFile: p.currentFile,
-        initialWorkHours: p.initialWorkHours,
-        trackedWorkMinutes: p.trackedWorkMinutes,
-        totalWorkHours: Number(((p.initialWorkHours || 0) + ((p.trackedWorkMinutes || 0) / 60)).toFixed(1)),
-        createdAt: p.createdAt.toISOString(),
-        updatedAt: p.updatedAt.toISOString(),
-        activeJob: activeJob
-          ? {
-              id: activeJob.id,
-              orderId: activeJob.orderId,
-              orderNumber: activeJob.order?.orderNumber,
-              filename: activeJob.filename,
-              status: activeJob.status as unknown as PrintJobStatus,
-              startedAt: activeJob.startedAt ? activeJob.startedAt.toISOString() : null,
-            }
-          : null,
-      };
-    });
+    return printers.map(toPrinterResponse);
   }
 
   async findOne(id: string) {
@@ -104,7 +70,7 @@ export class PrintersService {
       throw new NotFoundException(`Printer with ID "${id}" not found`);
     }
 
-    return printer;
+    return omitPrinterSecrets(printer);
   }
 
   async create(dto: CreatePrinterDto) {
@@ -131,7 +97,7 @@ export class PrintersService {
       }
     }
 
-    return printer;
+    return omitPrinterSecrets(printer);
   }
 
   async update(id: string, dto: UpdatePrinterDto) {
@@ -166,7 +132,7 @@ export class PrintersService {
       this.anycubicMqttService.disconnectPrinter(id);
     }
 
-    return updated;
+    return omitPrinterSecrets(updated);
   }
 
   async remove(id: string) {
@@ -178,9 +144,10 @@ export class PrintersService {
     this.bambuMqttService.disconnectPrinter(id);
     this.anycubicMqttService.disconnectPrinter(id);
 
-    return this.prisma.printer.delete({
+    const deleted = await this.prisma.printer.delete({
       where: { id },
     });
+    return omitPrinterSecrets(deleted);
   }
 
   async testConnection(dto: TestConnectionDto) {

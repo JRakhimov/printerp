@@ -8,10 +8,12 @@ import {
   Param,
   UseGuards,
   Req,
+  ParseUUIDPipe,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
-import { CreateUserDto, UpdateUserDto } from '@printerp/shared';
+import { CreateUserDto, CreateUserSchema, UpdateUserDto, UpdateUserSchema } from '@printerp/shared';
+import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller()
 @UseGuards(JwtAuthGuard)
@@ -29,17 +31,20 @@ export class UsersController {
   }
 
   @Post('users')
-  async create(@Body() dto: CreateUserDto) {
+  async create(@Body(new ZodValidationPipe(CreateUserSchema)) dto: CreateUserDto) {
     return this.usersService.createUser(dto);
   }
 
   @Patch('users/:id')
-  async update(@Param('id') id: string, @Body() dto: UpdateUserDto) {
+  async update(
+    @Param('id', new ParseUUIDPipe()) id: string,
+    @Body(new ZodValidationPipe(UpdateUserSchema)) dto: UpdateUserDto,
+  ) {
     return this.usersService.updateUser(id, dto);
   }
 
   @Delete('users/:id')
-  async remove(@Param('id') id: string) {
+  async remove(@Param('id', new ParseUUIDPipe()) id: string) {
     return this.usersService.deleteUser(id);
   }
 }

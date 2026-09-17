@@ -104,6 +104,8 @@ describe('PrintersService & BambuMqttService', () => {
 
     expect(result).toHaveLength(1);
     expect(result[0].name).toBe('Bambu Lab P1S #1');
+    expect(result[0]).not.toHaveProperty('accessCode');
+    expect(result[0].hasAccessCode).toBe(true);
     expect(result[0].printProgress).toBe(45);
     expect(result[0].activeJob?.orderNumber).toBe(101);
   });

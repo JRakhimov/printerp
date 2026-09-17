@@ -481,7 +481,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     <span className="text-xs font-semibold text-slate-300">
                       Модели и позиции ({order.items.length})
                     </span>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="hidden sm:inline text-[10px] text-slate-500">
                       Нажмите чтобы перейти
                     </span>
                   </div>
@@ -494,14 +494,14 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                             setViewingProjectId(item.projectId);
                           }
                         }}
-                        className={`bg-slate-900 border border-slate-800 rounded-xl p-2.5 flex items-center justify-between transition ${
+                        className={`bg-slate-900 border border-slate-800 rounded-xl p-3 space-y-2 transition ${
                           item.projectId
                             ? 'cursor-pointer hover:border-indigo-500/60 hover:bg-slate-800/70 group'
                             : ''
                         }`}
                         title={item.projectId ? 'Нажмите для просмотра модели' : undefined}
                       >
-                        <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                        <div className="flex items-start gap-2.5 min-w-0">
                           <div
                             className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 transition ${
                               item.projectId
@@ -511,19 +511,46 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                           >
                             <Box className="w-4 h-4" />
                           </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <h4 className="text-xs font-bold text-white group-hover:text-indigo-300 transition truncate">
-                                {item.projectNameSnapshot}
-                              </h4>
-                              {item.projectId && (
-                                <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition shrink-0" />
-                              )}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1">
+                                  <h4 className="text-xs font-bold text-white group-hover:text-indigo-300 transition truncate">
+                                    {item.projectNameSnapshot}
+                                  </h4>
+                                  {item.projectId && (
+                                    <ChevronRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-indigo-400 group-hover:translate-x-0.5 transition shrink-0" />
+                                  )}
+                                </div>
+                                <p className="text-[10px] text-slate-400 whitespace-nowrap">
+                                  {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
+                                </p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <span className="text-xs font-bold text-white block whitespace-nowrap tabular-nums">
+                                  {item.totalPrice.toLocaleString('ru-RU')} сум
+                                </span>
+                                <span className="text-[10px] text-slate-400 block whitespace-nowrap tabular-nums">
+                                  Себест: {item.totalCost.toLocaleString('ru-RU')} сум
+                                </span>
+                              </div>
                             </div>
-                            <p className="text-[10px] text-slate-400">
-                              {item.quantity} шт. &bull; по {item.unitPrice.toLocaleString('ru-RU')} сум
-                            </p>
-                            {(() => {
+                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setDefectItem(item);
+                            }}
+                            className="w-8 h-8 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg flex items-center justify-center shrink-0 transition"
+                            title="Зафиксировать брак детали"
+                            aria-label="Зафиксировать брак детали"
+                          >
+                            <AlertTriangle className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {(() => {
                               const itemFilaments = item.metadata?.filaments && Array.isArray(item.metadata.filaments) && item.metadata.filaments.length > 0
                                 ? item.metadata.filaments.map((f: any) => {
                                     const fil = filamentMap.get(f.filamentId);
@@ -552,11 +579,11 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                               if (itemFilaments.length === 0) return null;
 
                               return (
-                                <div className="flex flex-wrap items-center gap-1 mt-1">
+                                <div className="flex flex-wrap items-center gap-1 pl-[2.625rem] min-w-0">
                                   {itemFilaments.map((fil, fIdx) => (
                                     <span
                                       key={fIdx}
-                                      className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 text-[10px] text-slate-300 border border-slate-800"
+                                      className="inline-flex max-w-full min-w-0 items-center gap-1 px-1.5 py-0.5 rounded bg-slate-950 text-[10px] text-slate-300 border border-slate-800"
                                       title={`Расход: ${fil.grams}г × ${item.quantity} шт = ${fil.totalGrams}г`}
                                     >
                                       {fil.color && (
@@ -565,36 +592,13 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                                           style={{ backgroundColor: fil.color }}
                                         />
                                       )}
-                                      <span className="truncate max-w-[120px]">{fil.brand} {fil.name}</span>
-                                      <span className="text-amber-400 font-mono font-semibold">({fil.totalGrams}г)</span>
+                                      <span className="truncate">{fil.brand} {fil.name}</span>
+                                      <span className="text-amber-400 font-mono font-semibold shrink-0">({fil.totalGrams}г)</span>
                                     </span>
                                   ))}
                                 </div>
                               );
-                            })()}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          <div className="text-right">
-                            <span className="text-xs font-bold text-white block">
-                              {item.totalPrice.toLocaleString('ru-RU')} сум
-                            </span>
-                            <span className="text-[10px] text-slate-400">
-                              Себест: {item.totalCost.toLocaleString('ru-RU')} сум
-                            </span>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDefectItem(item);
-                            }}
-                            className="px-2 py-1 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg text-[10px] font-semibold flex items-center gap-1 transition"
-                            title="Зафиксировать брак детали"
-                          >
-                            <AlertTriangle className="w-3 h-3" />
-                          </button>
-                        </div>
+                        })()}
                       </div>
                     ))}
                   </div>
@@ -616,32 +620,32 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       {order.scrapRecords.map((scrap: any) => (
                         <div
                           key={scrap.id}
-                          className="bg-rose-950/20 border border-rose-900/30 rounded-xl p-2.5 flex items-center justify-between text-xs"
+                          className="bg-rose-50 border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/30 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs"
                         >
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <span className="font-bold text-white">
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-bold text-slate-800 dark:text-white">
                                 {scrap.orderItem?.projectNameSnapshot || 'Деталь'}
                               </span>
-                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-rose-500/20 text-rose-300 font-medium">
+                              <span className="text-[10px] px-1.5 py-0.5 rounded border border-rose-200 bg-rose-100 text-rose-800 dark:border-transparent dark:bg-rose-500/20 dark:text-rose-300 font-semibold">
                                 {ScrapReasonLabels[scrap.reason as keyof typeof ScrapReasonLabels] || scrap.reason}
                               </span>
                             </div>
-                            <p className="text-[11px] text-slate-400 mt-0.5">
-                              Списано: <span className="text-slate-200 font-semibold">{scrap.grams} г</span>
+                            <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5 break-words">
+                              Списано: <span className="text-slate-800 dark:text-slate-200 font-semibold">{scrap.grams} г</span>
                               {scrap.filament && ` • ${scrap.filament.brand} ${scrap.filament.name}`}
                               {scrap.comment && ` • "${scrap.comment}"`}
                             </p>
                           </div>
                           <div className="flex items-center gap-2 shrink-0">
-                            <span className="font-bold text-rose-400 font-mono text-xs">
+                            <span className="font-bold text-rose-700 dark:text-rose-400 font-mono text-xs">
                               +{scrap.cost.toLocaleString('ru-RU')} сум
                             </span>
                             <button
                               type="button"
                               onClick={() => handleDeleteScrap(scrap.id)}
                               disabled={deleteScrap.isPending}
-                              className="p-1 text-slate-500 hover:text-red-400 rounded transition"
+                              className="p-1 text-slate-500 hover:text-rose-700 dark:hover:text-red-400 rounded transition"
                               title="Отменить фиксацию брака (вернуть филамент на склад)"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -685,36 +689,40 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                     </span>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-xs">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-slate-400">Оплата:</span>
-                      <span
-                        className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                          order.paymentStatus === PaymentStatus.PAID
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                  <div className="pt-2 border-t border-slate-800/80 space-y-2 text-xs">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="text-slate-400">Оплата:</span>
+                        <span
+                          className={`text-[10px] font-bold px-2 py-0.5 rounded-full whitespace-nowrap ${
+                            order.paymentStatus === PaymentStatus.PAID
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                              : order.paymentStatus === PaymentStatus.PARTIALLY_PAID
+                              ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                              : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                          }`}
+                        >
+                          {order.paymentStatus === PaymentStatus.PAID
+                            ? 'ОПЛАЧЕН'
                             : order.paymentStatus === PaymentStatus.PARTIALLY_PAID
-                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
-                            : 'bg-red-500/10 text-red-400 border border-red-500/20'
-                        }`}
-                      >
-                        {order.paymentStatus === PaymentStatus.PAID
-                          ? 'ОПЛАЧЕН'
-                          : order.paymentStatus === PaymentStatus.PARTIALLY_PAID
-                          ? 'ЧАСТИЧНО'
-                          : 'НЕ ОПЛАЧЕН'}
+                            ? 'ЧАСТИЧНО'
+                            : 'НЕ ОПЛАЧЕН'}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-slate-300 text-right whitespace-nowrap tabular-nums">
+                        Внесено: {totalPaid.toLocaleString('ru-RU')} сум
                       </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={() => setIsEditing(true)}
-                        className="text-[10px] text-emerald-400 hover:text-emerald-300 ml-1 underline cursor-pointer"
+                        className="text-[10px] text-emerald-400 hover:text-emerald-300 underline cursor-pointer whitespace-nowrap"
                       >
-                        (Изменить депозит)
+                        Изменить депозит
                       </button>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[11px] text-slate-300">Внесено: {totalPaid.toLocaleString('ru-RU')} сум</span>
                       {remainingPayment > 0 && (
-                        <span className="block text-[10px] text-amber-400 font-medium">
+                        <span className="text-[10px] text-amber-400 font-medium text-right whitespace-nowrap tabular-nums">
                           Остаток: {remainingPayment.toLocaleString('ru-RU')} сум
                         </span>
                       )}
