@@ -25,9 +25,12 @@ FROM node:20-slim AS runner
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y openssl ca-certificates && rm -rf /var/lib/apt/lists/*
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends openssl ca-certificates ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
 
 ENV NODE_ENV=production
+ENV FFMPEG_PATH=/usr/bin/ffmpeg
 
 COPY package*.json ./
 COPY packages/shared/package*.json ./packages/shared/
