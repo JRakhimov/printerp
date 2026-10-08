@@ -337,9 +337,11 @@ export class PrinterCameraService implements OnModuleDestroy {
       };
       const timeout = setTimeout(() => {
         cleanup();
+        session.lastError ||= 'Таймаут ожидания видеопотока Anycubic';
+        this.logger.warn(`Anycubic camera: ${session.lastError}`);
         reject(
           new ServiceUnavailableException(
-            session.lastError || 'Таймаут ожидания видеопотока Anycubic',
+            session.lastError,
           ),
         );
       }, timeoutMs);
@@ -411,6 +413,12 @@ export class PrinterCameraService implements OnModuleDestroy {
     this.logger.log(`Starting ffmpeg camera stream for Anycubic "${printer.name}" from ${streamUrl}...`);
 
     const args = [
+      // Kobra advertises an inflated frame rate. Default probing can take
+      // longer than our first-frame deadline even when the stream is healthy.
+      '-analyzeduration', '500000',
+      '-probesize', '32768',
+      '-fpsprobesize', '0',
+      '-rw_timeout', '15000000',
       '-reconnect', '1',
       '-reconnect_at_eof', '1',
       '-reconnect_streamed', '1',
@@ -487,6 +495,10 @@ export class PrinterCameraService implements OnModuleDestroy {
 
     return new Promise<Buffer>((resolve, reject) => {
       const args = [
+        '-analyzeduration', '500000',
+        '-probesize', '32768',
+        '-fpsprobesize', '0',
+        '-rw_timeout', '15000000',
         '-t', '4',
         '-i', streamUrl,
         '-frames:v', '1',

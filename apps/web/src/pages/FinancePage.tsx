@@ -185,6 +185,34 @@ export const FinancePage: React.FC = () => {
             )}
           </div>
 
+          {/* Transparent Formula Breakdown */}
+          <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2">
+            <div>
+              <span className="text-[10px] text-slate-500 block">Запасы филамента:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.totalStockG.toLocaleString('ru-RU')} г
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Ср. расход на модель:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.avgCatalogWeightG} г
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Ср. цена модели:</span>
+              <span className="font-semibold text-slate-200">
+                {summary.filamentYield.avgCatalogPrice.toLocaleString('ru-RU')} сум
+              </span>
+            </div>
+            <div>
+              <span className="text-[10px] text-slate-500 block">Выручка с 1г пластика:</span>
+              <span className="font-semibold text-emerald-400">
+                {summary.filamentYield.avgRevenuePerGram.toLocaleString('ru-RU')} сум/г
+              </span>
+            </div>
+          </div>
+
           {/* Main 2 Highlight Metrics */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
             <div className="bg-slate-950/80 border border-slate-800 rounded-xl p-3 space-y-1">
@@ -212,34 +240,6 @@ export const FinancePage: React.FC = () => {
               </p>
               <span className="text-[10px] text-slate-500 block">
                 чистыми после вычета себестоимости пластика ({summary.filamentYield.inventoryValuation.toLocaleString('ru-RU')} сум)
-              </span>
-            </div>
-          </div>
-
-          {/* Transparent Formula Breakdown */}
-          <div className="bg-slate-950/50 border border-slate-800/80 rounded-xl p-2.5 text-[11px] grid grid-cols-2 sm:grid-cols-4 gap-2">
-            <div>
-              <span className="text-[10px] text-slate-500 block">Запасы филамента:</span>
-              <span className="font-semibold text-slate-200">
-                {summary.filamentYield.totalStockG.toLocaleString('ru-RU')} г
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-500 block">Ср. расход на модель:</span>
-              <span className="font-semibold text-slate-200">
-                {summary.filamentYield.avgCatalogWeightG} г
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-500 block">Ср. цена модели:</span>
-              <span className="font-semibold text-slate-200">
-                {summary.filamentYield.avgCatalogPrice.toLocaleString('ru-RU')} сум
-              </span>
-            </div>
-            <div>
-              <span className="text-[10px] text-slate-500 block">Выручка с 1г пластика:</span>
-              <span className="font-semibold text-emerald-400">
-                {summary.filamentYield.avgRevenuePerGram.toLocaleString('ru-RU')} сум/г
               </span>
             </div>
           </div>
