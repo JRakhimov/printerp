@@ -9,6 +9,8 @@ import {
 import { useFinancialSettings, useUpdateFinancialSettings } from '../hooks/useSettings';
 import { useUsers, useUpdateUser, useDeleteUser, UserItem } from '../hooks/useUsers';
 import { useTheme } from '../contexts/ThemeContext';
+import { useAuth } from '../contexts/AuthContext';
+import { formatApiError } from '../lib/api-error';
 import { AddUserModal } from '../components/AddUserModal';
 import { EditUserModal } from '../components/EditUserModal';
 import {
@@ -34,6 +36,8 @@ import {
 
 export const SettingsPage: React.FC = () => {
   const { theme, setTheme } = useTheme();
+  const { user: currentUser } = useAuth();
+  const canManageTeam = currentUser?.role === Role.OWNER;
   const [isAddUserModalOpen, setIsAddUserModalOpen] = React.useState(false);
   const [editingUser, setEditingUser] = React.useState<UserItem | null>(null);
 
@@ -87,6 +91,7 @@ export const SettingsPage: React.FC = () => {
       });
     } catch (err) {
       console.error('Failed to toggle active state:', err);
+      alert(formatApiError(err, 'Ошибка изменения статуса пользователя'));
     }
   };
 
@@ -98,12 +103,20 @@ export const SettingsPage: React.FC = () => {
       });
     } catch (err) {
       console.error('Failed to change role:', err);
+      alert(formatApiError(err, 'Ошибка изменения роли'));
     }
   };
 
   const handleDeleteUser = async (id: string, telegramId: string) => {
-    if (confirm(`Вы уверены, что хотите удалить пользователя (Telegram ID: ${telegramId}) из списка разрешённых?`)) {
+    if (!confirm(`Вы уверены, что хотите удалить пользователя (Telegram ID: ${telegramId}) из списка разрешённых?`)) {
+      return;
+    }
+
+    try {
       await deleteUser.mutateAsync(id);
+    } catch (err) {
+      console.error('Failed to delete user:', err);
+      alert(formatApiError(err, 'Ошибка удаления пользователя'));
     }
   };
 
@@ -278,15 +291,21 @@ export const SettingsPage: React.FC = () => {
               <Users className="w-4 h-4 text-blue-400" />
               Список пользователей
             </h3>
-            <p className="text-[11px] text-slate-400">Telegram-аккаунты с доступом к системе</p>
+            <p className="text-[11px] text-slate-400">
+              {canManageTeam
+                ? 'Telegram-аккаунты с доступом к системе'
+                : 'Управлять командой может только владелец'}
+            </p>
           </div>
-          <button
-            onClick={() => setIsAddUserModalOpen(true)}
-            className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-blue-500/20"
-          >
-            <UserPlus className="w-3.5 h-3.5" />
-            <span>Добавить пользователя</span>
-          </button>
+          {canManageTeam && (
+            <button
+              onClick={() => setIsAddUserModalOpen(true)}
+              className="flex items-center space-x-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold px-3 py-1.5 rounded-xl transition shadow-md shadow-blue-500/20"
+            >
+              <UserPlus className="w-3.5 h-3.5" />
+              <span>Добавить пользователя</span>
+            </button>
+          )}
         </div>
 
         {isUsersLoading ? (
@@ -302,8 +321,10 @@ export const SettingsPage: React.FC = () => {
             {users?.map((user) => (
               <div
                 key={user.id}
-                onClick={() => setEditingUser(user)}
-                className="bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs transition cursor-pointer group"
+                onClick={() => canManageTeam && setEditingUser(user)}
+                className={`bg-slate-950 border border-slate-800 rounded-xl p-3 flex items-center justify-between text-xs transition group ${
+                  canManageTeam ? 'cursor-pointer' : ''
+                }`}
               >
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
@@ -322,6 +343,7 @@ export const SettingsPage: React.FC = () => {
                     </span>
 
                     <button
+                      disabled={!canManageTeam}
                       onClick={(e) => {
                         e.stopPropagation();
                         handleToggleActive(
@@ -365,29 +387,31 @@ export const SettingsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex items-center space-x-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingUser(user);
-                    }}
-                    className="text-slate-500 hover:text-amber-400 p-1 transition"
-                    title="Редактировать пользователя"
-                  >
-                    <Edit className="w-3.5 h-3.5" />
-                  </button>
+                {canManageTeam && (
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setEditingUser(user);
+                      }}
+                      className="text-slate-500 hover:text-amber-400 p-1 transition"
+                      title="Редактировать пользователя"
+                    >
+                      <Edit className="w-3.5 h-3.5" />
+                    </button>
 
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteUser(user.id, user.telegramId);
-                    }}
-                    className="text-slate-500 hover:text-red-400 p-1 transition"
-                    title="Удалить пользователя"
-                  >
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteUser(user.id, user.telegramId);
+                      }}
+                      className="text-slate-500 hover:text-red-400 p-1 transition"
+                      title="Удалить пользователя"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>

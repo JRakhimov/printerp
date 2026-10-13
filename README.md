@@ -2,6 +2,8 @@
 
 A modular monolith web application designed to run inside Telegram Mini App for managing a small 3D printing home business. Hosted locally in a homelab environment.
 
+Reusable architecture guide (in Russian): [Основа для новых Telegram Mini Apps](docs/APPLICATION_BLUEPRINT.md) — frontend/backend stack, shared contracts, PostgreSQL and Prisma, migrations, Telegram auth, dev mode, Docker, deployment, and adapting the architecture for another application.
+
 ---
 
 ## 🛠 Tech Stack

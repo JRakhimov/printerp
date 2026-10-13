@@ -5,6 +5,7 @@ import { UpdateUserSchema, UpdateUserDto, Role } from '@printerp/shared';
 import { UserItem, useUpdateUser, useDeleteUser } from '../hooks/useUsers';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, UserCheck, Shield, Loader2, Send, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface EditUserModalProps {
   user: UserItem | null;
@@ -59,9 +60,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
     try {
       await updateUser.mutateAsync({ id: user.id, dto: data });
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update user:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления данных сотрудника');
+      alert(formatApiError(err, 'Ошибка обновления данных сотрудника'));
     }
   };
 
@@ -71,9 +72,9 @@ export const EditUserModal: React.FC<EditUserModalProps> = ({ user, isOpen, onCl
       try {
         await deleteUser.mutateAsync(user.id);
         onClose();
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to delete user:', err);
-        alert(err.response?.data?.message || 'Ошибка удаления сотрудника');
+        alert(formatApiError(err, 'Ошибка удаления сотрудника'));
       }
     }
   };

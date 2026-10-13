@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CameraStatusResponse, PrinterResponse } from '@printerp/shared';
 import { apiClient } from '../lib/api-client';
 import {
   X,
@@ -15,9 +16,10 @@ import {
   Loader2,
   FileCode,
 } from 'lucide-react';
+import { getApiErrorMessage } from '../lib/api-error';
 
 interface PrinterCameraModalProps {
-  printer: any | null;
+  printer: PrinterResponse | null;
   isOpen: boolean;
   onClose: () => void;
 }
@@ -35,7 +37,7 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
   const [isLoaded, setIsLoaded] = useState(false);
   const [hasError, setHasError] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [cameraStatus, setCameraStatus] = useState<any>(null);
+  const [cameraStatus, setCameraStatus] = useState<CameraStatusResponse | null>(null);
 
   useEffect(() => {
     if (isOpen && printer?.id) {
@@ -43,7 +45,7 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
       setIsLoaded(false);
       setHasError(false);
       apiClient
-        .get(`/printers/${printer.id}/camera/status`)
+        .get<CameraStatusResponse>(`/printers/${printer.id}/camera/status`)
         .then((res) => setCameraStatus(res.data))
         .catch(() => {});
     }
@@ -108,9 +110,9 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Download snapshot error:', err);
-      alert(err.message || 'Ошибка загрузки снимка');
+      alert(getApiErrorMessage(err) || 'Ошибка загрузки снимка');
     } finally {
       setDownloading(false);
     }
@@ -121,7 +123,7 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
     setHasError(false);
     setStreamKey(Date.now());
     apiClient
-      .get(`/printers/${printer.id}/camera/status`)
+      .get<CameraStatusResponse>(`/printers/${printer.id}/camera/status`)
       .then((res) => setCameraStatus(res.data))
       .catch(() => {});
   };
@@ -215,7 +217,7 @@ export const PrinterCameraModal: React.FC<PrinterCameraModalProps> = ({
                 setIsLoaded(false);
                 setHasError(true);
                 apiClient
-                  .get(`/printers/${printer.id}/camera/status`)
+                  .get<CameraStatusResponse>(`/printers/${printer.id}/camera/status`)
                   .then((res) => setCameraStatus(res.data))
                   .catch(() => {});
               }}

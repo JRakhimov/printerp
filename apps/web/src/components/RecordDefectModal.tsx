@@ -13,6 +13,7 @@ import { OrderItem } from '../hooks/useOrders';
 import { useFilaments } from '../hooks/useFilaments';
 import { usePrinters } from '../hooks/usePrinters';
 import { useCreateScrapRecord, ScrapReason, ScrapReasonLabels } from '../hooks/useScrap';
+import { formatApiError } from '../lib/api-error';
 
 interface RecordDefectModalProps {
   isOpen: boolean;
@@ -54,7 +55,7 @@ export const RecordDefectModal: React.FC<RecordDefectModalProps> = ({
     if (initializedItemRef.current === initializationKey) return;
     initializedItemRef.current = initializationKey;
 
-    const projectFilaments = (item.project as any)?.projectFilaments;
+    const projectFilaments = item.project?.projectFilaments;
     const projectFilament = projectFilaments?.[0];
 
     setErrorMsg(null);
@@ -109,8 +110,8 @@ export const RecordDefectModal: React.FC<RecordDefectModalProps> = ({
         reprintPrinterId: reprint ? reprintPrinterId || undefined : undefined,
       });
       onClose();
-    } catch (err: any) {
-      setErrorMsg(err?.response?.data?.message || 'Ошибка при сохранении брака');
+    } catch (err) {
+      setErrorMsg(formatApiError(err, 'Ошибка при сохранении брака'));
     }
   };
 

@@ -6,6 +6,7 @@ import {
   useDeleteOrder,
   OrderStatus,
   PaymentStatus,
+  type OrderItem,
 } from '../hooks/useOrders';
 import { useClients, useCreateClient } from '../hooks/useClients';
 import { useProjects } from '../hooks/useProjects';
@@ -17,6 +18,7 @@ import { ProjectDetailModal } from './ProjectDetailModal';
 import { RecordDefectModal } from './RecordDefectModal';
 import { useDeleteScrapRecord, ScrapReasonLabels } from '../hooks/useScrap';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { formatApiError } from '../lib/api-error';
 import {
   X,
   Calendar,
@@ -67,7 +69,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
   const [isEditing, setIsEditing] = useState<boolean>(initialMode === 'edit');
   const [statusComment, setStatusComment] = useState('');
   const [viewingProjectId, setViewingProjectId] = useState<string | null>(null);
-  const [defectItem, setDefectItem] = useState<any>(null);
+  const [defectItem, setDefectItem] = useState<OrderItem | null>(null);
 
   const projectMap = new Map((projects || []).map((p) => [p.id, p]));
   const filamentMap = new Map((filaments || []).map((f) => [f.id, f]));
@@ -76,8 +78,8 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     if (confirm('Отменить фиксацию брака и вернуть списанный вес филамента на склад?')) {
       try {
         await deleteScrap.mutateAsync(scrapId);
-      } catch (err: any) {
-        alert(err?.response?.data?.message || 'Ошибка при отмене брака');
+      } catch (err) {
+        alert(formatApiError(err, 'Ошибка при отмене брака'));
       }
     }
   };
@@ -138,9 +140,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       setIsQuickCreatingClient(false);
       setQuickInstagram('');
       setQuickCity('Ташкент');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create quick client:', err);
-      alert(err?.response?.data?.message || 'Ошибка при создании клиента');
+      alert(formatApiError(err, 'Ошибка при создании клиента'));
     }
   };
 
@@ -227,7 +229,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
     );
   };
 
-  const handleItemQuantityChange = (index: number, value: any) => {
+  const handleItemQuantityChange = (index: number, value: string) => {
     setEditItems((prev) =>
       prev.map((item, i) => {
         if (i === index) {
@@ -371,9 +373,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       }
 
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update order:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления заказа');
+      alert(formatApiError(err, 'Ошибка обновления заказа'));
     }
   };
 
@@ -383,9 +385,9 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
       try {
         await deleteOrder.mutateAsync(order.id);
         onClose();
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to delete order:', err);
-        alert(err.response?.data?.message || 'Ошибка удаления заказа');
+        alert(formatApiError(err, 'Ошибка удаления заказа'));
       }
     }
   };
@@ -552,7 +554,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
 
                         {(() => {
                               const itemFilaments = item.metadata?.filaments && Array.isArray(item.metadata.filaments) && item.metadata.filaments.length > 0
-                                ? item.metadata.filaments.map((f: any) => {
+                                ? item.metadata.filaments.map((f) => {
                                     const fil = filamentMap.get(f.filamentId);
                                     return {
                                       filamentId: f.filamentId,
@@ -565,7 +567,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                                     };
                                   })
                                 : item.project?.projectFilaments && item.project.projectFilaments.length > 0
-                                ? item.project.projectFilaments.map((pf: any) => ({
+                                ? item.project.projectFilaments.map((pf) => ({
                                     filamentId: pf.filamentId,
                                     brand: pf.filament?.brand || filamentMap.get(pf.filamentId)?.brand || 'Филамент',
                                     name: pf.filament?.name || filamentMap.get(pf.filamentId)?.name || '',
@@ -617,7 +619,7 @@ export const OrderDetailModal: React.FC<OrderDetailModalProps> = ({
                       </span>
                     </div>
                     <div className="space-y-1.5">
-                      {order.scrapRecords.map((scrap: any) => (
+                      {order.scrapRecords.map((scrap) => (
                         <div
                           key={scrap.id}
                           className="bg-rose-50 border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900/30 rounded-xl p-2.5 flex items-center justify-between gap-3 text-xs"

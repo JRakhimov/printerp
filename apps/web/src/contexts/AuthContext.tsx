@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { AuthUserResponse } from '@printerp/shared';
+import { AuthResponse, AuthUserResponse } from '@printerp/shared';
 import { apiClient, setAuthToken } from '../lib/api-client';
+import { getApiErrorMessage, getApiErrorStatus } from '../lib/api-error';
 
 interface AuthContextType {
   user: AuthUserResponse | null;
@@ -51,7 +52,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const initDataPayload = telegramInitData || 'dev_user_123456789';
 
       // 2. Request backend authentication
-      const response = await apiClient.post('/auth/telegram', {
+      const response = await apiClient.post<AuthResponse>('/auth/telegram', {
         initData: initDataPayload,
       });
 
@@ -59,18 +60,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setAuthToken(accessToken);
       setUser(authUser);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Authentication error:', err);
-      if (err.response?.status === 403 || err.response?.status === 401) {
+
+      const status = getApiErrorStatus(err);
+      const serverMsg = getApiErrorMessage(err);
+
+      if (status === 403 || status === 401) {
         setIsAccessDenied(true);
-        const serverMsg = err.response?.data?.error?.message || err.response?.data?.message;
         setErrorMessage(
           serverMsg && !serverMsg.toLowerCase().includes('initdata')
             ? serverMsg
             : 'Пожалуйста, откройте приложение внутри Telegram Mini App.'
         );
       } else {
-        setErrorMessage(err.response?.data?.error?.message || 'Failed to authenticate with backend server');
+        setErrorMessage(serverMsg || 'Failed to authenticate with backend server');
       }
     } finally {
       setIsLoading(false);

@@ -1,5 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
+import {
+  formatYearMonth,
+  getAppTimeZone,
+  getZonedMonthStart,
+  getZonedYearMonth,
+} from '../../common/utils/timezone';
 import {
   CreateTransactionDto,
   TransactionQueryDto,
@@ -19,9 +26,7 @@ import {
 export class FinanceService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async createTransaction(dto: CreateTransactionDto, userId?: string | any) {
-    const createdById = typeof userId === 'object' && userId !== null ? userId.id : userId;
-
+  async createTransaction(dto: CreateTransactionDto, userId?: string) {
     return this.prisma.transaction.create({
       data: {
         type: dto.type,
@@ -30,7 +35,7 @@ export class FinanceService {
         orderId: dto.orderId || null,
         date: dto.date ? new Date(dto.date) : new Date(),
         comment: dto.comment || null,
-        createdById: createdById || null,
+        createdById: userId || null,
       },
       include: {
         order: {
@@ -53,15 +58,21 @@ export class FinanceService {
   async findAllTransactions(query: TransactionQueryDto) {
     const { type, category, startDate, endDate, search } = query;
 
-    const where: any = {};
+    const where: Prisma.TransactionWhereInput = {};
 
-    if (type) where.type = type;
-    if (category) where.category = category;
+    if (type) {
+      where.type = type;
+    }
+
+    if (category) {
+      where.category = category;
+    }
 
     if (startDate || endDate) {
-      where.date = {};
-      if (startDate) where.date.gte = new Date(startDate);
-      if (endDate) where.date.lte = new Date(endDate);
+      where.date = {
+        ...(startDate ? { gte: new Date(startDate) } : {}),
+        ...(endDate ? { lte: new Date(endDate) } : {}),
+      };
     }
 
     if (search) {
@@ -105,7 +116,6 @@ export class FinanceService {
       select: {
         calculatedCost: true,
         finalPrice: true,
-        calculatedPrice: true,
         payments: {
           select: { amount: true },
         },
@@ -127,30 +137,28 @@ export class FinanceService {
 
     let totalRevenue = 0;
     let totalCogs = 0;
-    let totalPaymentsReceived = 0;
+    let unpaidBalance = 0;
     let totalProductionG = 0;
 
     for (const ord of activeOrders) {
-      const price = ord.finalPrice > 0 ? ord.finalPrice : ord.calculatedPrice;
-      totalRevenue += price;
+      totalRevenue += ord.finalPrice;
       totalCogs += ord.calculatedCost;
 
-      const orderPaid = ord.payments ? ord.payments.reduce((sum: number, p: any) => sum + p.amount, 0) : 0;
-      totalPaymentsReceived += orderPaid;
+      // Overpayment on one order must not hide debt on another
+      const orderPaid = ord.payments.reduce((sum, p) => sum + p.amount, 0);
+      unpaidBalance += Math.max(0, ord.finalPrice - orderPaid);
 
-      if ((ord as any).items) {
-        for (const it of (ord as any).items) {
-          const qty = it.quantity || 1;
-          let w = it.project?.weightG || 0;
-          if (!w && it.project?.projectFilaments?.length) {
-            w = it.project.projectFilaments.reduce((sum: number, pf: any) => sum + pf.grams, 0);
-          }
-          totalProductionG += w * qty;
+      for (const it of ord.items) {
+        const qty = it.quantity || 1;
+        let w = it.project?.weightG || 0;
+
+        if (!w && it.project?.projectFilaments.length) {
+          w = it.project.projectFilaments.reduce((sum, pf) => sum + pf.grams, 0);
         }
+
+        totalProductionG += w * qty;
       }
     }
-
-    const unpaidBalance = Math.max(0, totalRevenue - totalPaymentsReceived);
 
     // 2. Operational expenses from transactions (type = EXPENSE)
     const expenseAggregate = await this.prisma.transaction.aggregate({
@@ -274,27 +282,26 @@ export class FinanceService {
   }
 
   async getMonthlyAnalytics(): Promise<MonthlyAnalytics[]> {
-    // Generate monthly metrics for past 6 months
+    // Generate monthly metrics for past 6 months, with month boundaries in the business time zone
     const result: MonthlyAnalytics[] = [];
-    const now = new Date();
+    const timeZone = getAppTimeZone();
+    const current = getZonedYearMonth(new Date(), timeZone);
 
     for (let i = 5; i >= 0; i--) {
-      const date = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const startOfMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-      const endOfMonth = new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59);
-
-      const monthStr = date.toISOString().slice(0, 7); // YYYY-MM
+      const month = current.month - i;
+      const startOfMonth = getZonedMonthStart(current.year, month, timeZone);
+      const startOfNextMonth = getZonedMonthStart(current.year, month + 1, timeZone);
+      const monthStr = formatYearMonth(current.year, month);
 
       // Orders created this month
       const monthOrders = await this.prisma.order.findMany({
         where: {
-          createdAt: { gte: startOfMonth, lte: endOfMonth },
+          createdAt: { gte: startOfMonth, lt: startOfNextMonth },
           status: { not: 'CANCELLED' },
         },
         select: {
           calculatedCost: true,
           finalPrice: true,
-          calculatedPrice: true,
         },
       });
 
@@ -302,14 +309,14 @@ export class FinanceService {
       let cogs = 0;
 
       for (const ord of monthOrders) {
-        revenue += ord.finalPrice > 0 ? ord.finalPrice : ord.calculatedPrice;
+        revenue += ord.finalPrice;
         cogs += ord.calculatedCost;
       }
 
       // Expenses recorded this month
       const monthExpenses = await this.prisma.transaction.aggregate({
         where: {
-          date: { gte: startOfMonth, lte: endOfMonth },
+          date: { gte: startOfMonth, lt: startOfNextMonth },
           type: 'EXPENSE',
         },
         _sum: { amount: true },
@@ -377,7 +384,6 @@ export class FinanceService {
           where: { status: { not: 'CANCELLED' } },
           select: {
             finalPrice: true,
-            calculatedPrice: true,
           },
         },
       },
@@ -385,10 +391,7 @@ export class FinanceService {
 
     const metrics = clients.map((c) => {
       const totalOrders = c.orders.length;
-      const totalSpent = c.orders.reduce(
-        (sum, o) => sum + (o.finalPrice > 0 ? o.finalPrice : o.calculatedPrice),
-        0,
-      );
+      const totalSpent = c.orders.reduce((sum, o) => sum + o.finalPrice, 0);
 
       return {
         id: c.id,

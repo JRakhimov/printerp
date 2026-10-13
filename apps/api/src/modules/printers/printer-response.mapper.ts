@@ -1,4 +1,14 @@
-import { PrintJobStatus, PrinterResponse } from '@printerp/shared';
+import { Printer, PrintJob } from '@prisma/client';
+import {
+  PrintJobStatus,
+  PrinterIntegrationType,
+  PrinterManufacturer,
+  PrinterResponse,
+} from '@printerp/shared';
+
+type PrinterWithActiveJobs = Printer & {
+  printJobs?: (PrintJob & { order?: { orderNumber: number } | null })[];
+};
 
 export function omitPrinterSecrets<T extends { accessCode?: unknown }>(printer: T): Omit<T, 'accessCode'> & {
   hasAccessCode: boolean;
@@ -10,13 +20,14 @@ export function omitPrinterSecrets<T extends { accessCode?: unknown }>(printer: 
   };
 }
 
-export function toPrinterResponse(printer: any): PrinterResponse {
+export function toPrinterResponse(printer: PrinterWithActiveJobs): PrinterResponse {
   const activeJob = printer.printJobs?.[0];
-  const { printJobs: _printJobs, ...publicPrinter } = omitPrinterSecrets(printer) as any;
+  const { printJobs: _printJobs, ...publicPrinter } = omitPrinterSecrets(printer);
+
   return {
     ...publicPrinter,
-    manufacturer: printer.manufacturer,
-    integrationType: printer.integrationType,
+    manufacturer: printer.manufacturer as PrinterManufacturer,
+    integrationType: printer.integrationType as PrinterIntegrationType,
     lastSeenAt: printer.lastSeenAt ? printer.lastSeenAt.toISOString() : null,
     totalWorkHours: Number(
       ((printer.initialWorkHours || 0) + (printer.trackedWorkMinutes || 0) / 60).toFixed(1),

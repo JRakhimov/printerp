@@ -13,6 +13,7 @@ describe('Printer Status Telegram Notifications', () => {
   const mockPrismaService = {
     user: {
       findMany: jest.fn(),
+      findUnique: jest.fn(),
     },
     printer: {
       findMany: jest.fn(),
@@ -192,6 +193,61 @@ describe('Printer Status Telegram Notifications', () => {
       expect(sendSpy).toHaveBeenCalledTimes(2);
       expect(sendSpy).toHaveBeenCalledWith('111222333', expect.any(String));
       expect(sendSpy).toHaveBeenCalledWith('444555666', expect.any(String));
+    });
+  });
+
+  describe('TelegramBotService security', () => {
+    let fetchMock: jest.SpyInstance;
+
+    beforeEach(() => {
+      fetchMock = jest.spyOn(global, 'fetch').mockResolvedValue(new Response('{}', { status: 200 }));
+    });
+
+    afterEach(() => {
+      fetchMock.mockRestore();
+    });
+
+    it('should escape user-provided text in HTML notifications', () => {
+      const text = telegramBotService.formatPrinterStatusMessage({
+        printerName: 'Printer <1>',
+        eventType: 'FINISHED',
+        currentFile: 'part&cap.gcode',
+        clientName: '<script>',
+      });
+
+      expect(text).toContain('Printer &lt;1&gt;');
+      expect(text).toContain('part&amp;cap.gcode');
+      expect(text).not.toContain('<script>');
+    });
+
+    it('should refuse /camera to Telegram users outside the allowlist', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue(null);
+
+      await telegramBotService['handleUpdate']({
+        update_id: 1,
+        message: { message_id: 1, chat: { id: 555 }, from: { id: 555 }, text: '/camera' },
+      });
+
+      const sentBody = JSON.parse(String(fetchMock.mock.calls[0][1]?.body));
+
+      expect(mockPrismaService.printer.findMany).not.toHaveBeenCalled();
+      expect(sentBody.text).toContain('Доступ запрещён');
+    });
+
+    it('should refuse camera snapshot buttons to inactive users', async () => {
+      mockPrismaService.user.findUnique.mockResolvedValue({ isActive: false });
+
+      await telegramBotService['handleUpdate']({
+        update_id: 2,
+        callback_query: {
+          id: 'callback-1',
+          from: { id: 555 },
+          message: { message_id: 1, chat: { id: 555 } },
+          data: 'cam_snap:printer-1',
+        },
+      });
+
+      expect(mockPrismaService.printer.findUnique).not.toHaveBeenCalled();
     });
   });
 

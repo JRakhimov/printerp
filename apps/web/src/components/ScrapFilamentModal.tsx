@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { useFilaments } from '../hooks/useFilaments';
 import { useCreateScrapRecord, ScrapReason, ScrapReasonLabels } from '../hooks/useScrap';
+import { formatApiError } from '../lib/api-error';
 
 interface ScrapFilamentModalProps {
   isOpen: boolean;
@@ -70,8 +71,8 @@ export const ScrapFilamentModal: React.FC<ScrapFilamentModalProps> = ({
         comment: comment.trim() || undefined,
       });
       onClose();
-    } catch (err: any) {
-      setErrorMsg(err?.response?.data?.message || 'Ошибка при списании филамента');
+    } catch (err) {
+      setErrorMsg(formatApiError(err, 'Ошибка при списании филамента'));
     }
   };
 

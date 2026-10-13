@@ -25,6 +25,7 @@ describe('ScrapService', () => {
     printJob: {
       create: jest.fn(),
     },
+    $transaction: jest.fn((callback: (tx: unknown) => unknown): unknown => callback(mockPrismaService)),
   };
 
   beforeEach(async () => {
@@ -86,7 +87,7 @@ describe('ScrapService', () => {
 
       expect(mockPrismaService.filament.update).toHaveBeenCalledWith({
         where: { id: 'fil-1' },
-        data: { stockG: 950 },
+        data: { stockG: { decrement: 50 } },
       });
       expect(mockPrismaService.scrapRecord.create).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -220,7 +221,7 @@ describe('ScrapService', () => {
 
       expect(mockPrismaService.filament.update).toHaveBeenCalledWith({
         where: { id: 'fil-1' },
-        data: { stockG: 280 }, // 200 + 80
+        data: { stockG: { increment: 80 } },
       });
       expect(mockPrismaService.scrapRecord.delete).toHaveBeenCalledWith({
         where: { id: 'scrap-1' },

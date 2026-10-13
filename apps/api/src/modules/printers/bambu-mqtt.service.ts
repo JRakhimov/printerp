@@ -1,13 +1,31 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { PrismaService } from '../../database/prisma.service';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
-import { OrderStatus, PrintJobStatus, PrinterManufacturer } from '@printerp/shared';
+import { Prisma } from '@prisma/client';
+import * as mqtt from 'mqtt';
+import { MqttClient } from 'mqtt';
+import { PrintJobStatus, PrinterManufacturer } from '@printerp/shared';
+import { getErrorCode, getErrorMessage } from '../../common/utils/error-message';
+import { PrinterMqttClientOptions } from './mqtt-options';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const mqtt = require('mqtt');
+/**
+ * Subset of the `print` section of a Bambu Lab MQTT report that we consume.
+ */
+export interface BambuPrintReport {
+  gcode_state?: string;
+  mc_percent?: number;
+  mc_remaining_time?: number;
+  nozzle_temper?: number;
+  bed_temper?: number;
+  subtask_name?: string;
+  gcode_file?: string;
+  print_error?: number;
+  fail_reason?: number | string;
+}
 
-type MqttClient = any;
-type IClientOptions = any;
+export interface BambuReportPayload {
+  print?: BambuPrintReport;
+}
 
 export interface BambuTelemetry {
   gcodeState?: string;
@@ -133,7 +151,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     const cleanAccessCode = printer.accessCode.trim();
     const cleanSerial = printer.serialNumber?.trim().toUpperCase() || null;
 
-    const options: IClientOptions = {
+    const options: PrinterMqttClientOptions = {
       host: cleanIp,
       port: 8883,
       family: 4,
@@ -166,7 +184,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
 
       client.on('connect', () => {
         this.logger.log(`✅ Connected to Bambu printer "${printer.name}" via MQTT`);
-        client.subscribe(topic, (err: any) => {
+        client.subscribe(topic, (err) => {
           if (err) {
             this.logger.error(`Failed to subscribe to topic ${topic} for "${printer.name}":`, err);
           } else {
@@ -257,7 +275,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     client.publish(requestTopic, pushPayload, { qos: 0 });
   }
 
-  async handlePrinterReport(printerId: string, payload: any) {
+  async handlePrinterReport(printerId: string, payload: BambuReportPayload) {
     const printData = payload.print;
     if (!printData) return;
 
@@ -281,7 +299,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     };
     this.cachedTelemetry.set(printerId, updatedCached);
 
-    const updateData: any = {
+    const updateData: Prisma.PrinterUpdateInput = {
       lastSeenAt: new Date(),
     };
 
@@ -370,6 +388,10 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Printer telemetry only tracks print jobs. Order status is changed manually
+   * until a proper order <-> print job sync is designed.
+   */
   private async handlePrintStarted(printerId: string, filename?: string) {
     // Find active or queued job for this printer
     const activeJob = await this.prisma.printJob.findFirst({
@@ -388,12 +410,6 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           startedAt: activeJob.startedAt || new Date(),
           filename: filename || activeJob.filename,
         },
-      });
-
-      // Update parent order to PRINTING
-      await this.prisma.order.update({
-        where: { id: activeJob.orderId },
-        data: { status: OrderStatus.PRINTING },
       });
     }
   }
@@ -415,21 +431,6 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           finishedAt: new Date(),
         },
       });
-
-      // Check if all print jobs for this order are completed
-      const remainingUnfinishedJobs = await this.prisma.printJob.count({
-        where: {
-          orderId: activeJob.orderId,
-          status: { in: [PrintJobStatus.QUEUED, PrintJobStatus.PRINTING, PrintJobStatus.PAUSED] },
-        },
-      });
-
-      if (remainingUnfinishedJobs === 0) {
-        await this.prisma.order.update({
-          where: { id: activeJob.orderId },
-          data: { status: OrderStatus.PRINTED },
-        });
-      }
     }
   }
 
@@ -703,10 +704,11 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       if (newStatus === 'IDLE') {
         this.lastNotifiedStart.delete(printerId);
       }
-    } catch (err: any) {
-      this.logger.error(`Error handling status transition for printer ${printerId}:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error handling status transition for printer ${printerId}:`, getErrorMessage(err));
     }
   }
+
 
   async testConnection(ipAddress: string, accessCode: string, serialNumber?: string | null): Promise<{
     success: boolean;
@@ -718,7 +720,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
       const cleanAccessCode = accessCode.trim();
       const cleanSerial = serialNumber?.trim().toUpperCase() || null;
 
-      const client = mqtt.connect({
+      const options: PrinterMqttClientOptions = {
         host: cleanIp,
         port: 8883,
         family: 4,
@@ -737,7 +739,9 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
           checkServerIdentity: () => undefined,
           family: 4,
         },
-      });
+      };
+
+      const client = mqtt.connect(options);
 
       const timeout = setTimeout(() => {
         try {
@@ -759,7 +763,7 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         client.once('message', (_topic, message) => {
           clearTimeout(timeout);
           try {
-            const payload = JSON.parse(message.toString());
+            const payload: BambuReportPayload = JSON.parse(message.toString());
             const print = payload.print || {};
             const telemetry: BambuTelemetry = {
               gcodeState: print.gcode_state,
@@ -797,20 +801,23 @@ export class BambuMqttService implements OnModuleInit, OnModuleDestroy {
         }, 1500);
       });
 
-      client.on('error', (err: any) => {
+      client.on('error', (err) => {
         clearTimeout(timeout);
+
         try {
           client.end(true);
         } catch {}
 
+        const errorCode = getErrorCode(err);
         let hint = err.message;
+
         if (err.message && err.message.toLowerCase().includes('not authorized')) {
           hint = 'Access Code is incorrect. Check the 8-character LAN Access Code on the printer screen.';
-        } else if (err.code === 'EHOSTUNREACH') {
+        } else if (errorCode === 'EHOSTUNREACH') {
           hint = `Host ${ipAddress} is unreachable. Check if the printer is on the same Wi-Fi subnet.`;
-        } else if (err.code === 'ECONNREFUSED') {
+        } else if (errorCode === 'ECONNREFUSED') {
           hint = `Connection refused on port 8883. Ensure LAN Mode is enabled on the printer.`;
-        } else if (err.code === 'ETIMEDOUT') {
+        } else if (errorCode === 'ETIMEDOUT') {
           hint = `Connection timed out to ${cleanIp}. Check IP address.`;
         }
 

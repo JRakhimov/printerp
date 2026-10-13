@@ -24,7 +24,7 @@ export interface OrderItem {
   totalPrice: number;
   metadata?: {
     filaments?: OrderItemFilament[];
-    [key: string]: any;
+    [key: string]: unknown;
   } | null;
   project?: Project;
 }
@@ -42,9 +42,10 @@ export interface OrderEvent {
   orderId: string;
   userId: string | null;
   eventType: string;
-  oldValue: any;
-  newValue: any;
-  metadata: any;
+  // STATUS_CHANGE events store order status names; other events leave them empty
+  oldValue: string | null;
+  newValue: string | null;
+  metadata: Record<string, unknown> | null;
   createdAt: string;
 }
 

@@ -2,6 +2,8 @@ import axios from 'axios';
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3011';
 
+console.log(apiBaseUrl);
+
 export const apiClient = axios.create({
   baseURL: apiBaseUrl,
   headers: {

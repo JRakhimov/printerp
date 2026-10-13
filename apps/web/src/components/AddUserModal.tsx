@@ -5,6 +5,7 @@ import { CreateUserSchema, CreateUserDto, Role } from '@printerp/shared';
 import { useCreateUser } from '../hooks/useUsers';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, UserPlus, Shield, Loader2, Send } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface AddUserModalProps {
   isOpen: boolean;
@@ -34,9 +35,9 @@ export const AddUserModal: React.FC<AddUserModalProps> = ({ isOpen, onClose }) =
       await createUser.mutateAsync(data);
       reset();
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to add user to allowlist:', err);
-      alert(err.response?.data?.message || 'Ошибка добавления сотрудника в команду');
+      alert(formatApiError(err, 'Ошибка добавления сотрудника в команду'));
     }
   };
 

@@ -1,4 +1,5 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { User } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { Role, CreateUserDto, UpdateUserDto } from '@printerp/shared';
 
@@ -52,7 +53,12 @@ export class UsersService {
   }
 
   async updateUser(id: string, dto: UpdateUserDto) {
-    await this.getUserById(id);
+    const existing = await this.getUserById(id);
+    const losesOwnerAccess = (dto.role !== undefined && dto.role !== Role.OWNER) || dto.isActive === false;
+
+    if (losesOwnerAccess) {
+      await this.assertNotLastActiveOwner(existing);
+    }
 
     const updated = await this.prisma.user.update({
       where: { id },
@@ -69,21 +75,46 @@ export class UsersService {
   }
 
   async deleteUser(id: string) {
-    await this.getUserById(id);
+    const existing = await this.getUserById(id);
 
-    return this.prisma.user.delete({
+    await this.assertNotLastActiveOwner(existing);
+
+    const deleted = await this.prisma.user.delete({
       where: { id },
     });
+
+    return this.mapUser(deleted);
   }
 
-  private mapUser(user: any) {
+  /**
+   * Prevent the team from losing its only active owner (nobody could manage users afterwards).
+   */
+  private async assertNotLastActiveOwner(user: { id: string; role: Role; isActive: boolean }) {
+    if (user.role !== Role.OWNER || !user.isActive) {
+      return;
+    }
+
+    const otherActiveOwners = await this.prisma.user.count({
+      where: {
+        id: { not: user.id },
+        role: Role.OWNER,
+        isActive: true,
+      },
+    });
+
+    if (otherActiveOwners === 0) {
+      throw new BadRequestException('Cannot remove, deactivate or demote the last active owner');
+    }
+  }
+
+  private mapUser(user: User) {
     return {
       id: user.id,
       telegramId: user.telegramId.toString(),
       telegramUsername: user.telegramUsername,
       firstName: user.firstName,
       lastName: user.lastName,
-      role: user.role as unknown as Role,
+      role: user.role as Role,
       isActive: user.isActive,
       createdAt: user.createdAt.toISOString(),
       updatedAt: user.updatedAt.toISOString(),

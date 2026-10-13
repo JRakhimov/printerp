@@ -92,3 +92,17 @@ export interface PrinterResponse {
     startedAt: string | null;
   } | null;
 }
+
+export interface CameraStatusResponse {
+  printerId: string;
+  manufacturer: PrinterManufacturer;
+  isStreaming: boolean;
+  activeViewers: number;
+  hasRecentFrame: boolean;
+  lastFrameAt: string | null;
+  streamUrl: string;
+  snapshotUrl: string;
+  rateLimited: boolean;
+  rateLimitedUntil: string | null;
+  errorMessage: string | null;
+}

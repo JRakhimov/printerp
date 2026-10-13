@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../database/prisma.service';
 import { BambuMqttService } from './bambu-mqtt.service';
 import { AnycubicMqttService } from './anycubic-mqtt.service';
@@ -9,7 +10,6 @@ import {
   CreatePrintJobDto,
   PrinterResponse,
   PrintJobStatus,
-  OrderStatus,
   PrinterManufacturer,
 } from '@printerp/shared';
 import { omitPrinterSecrets, toPrinterResponse } from './printer-response.mapper';
@@ -189,13 +189,19 @@ export class PrintersService {
     return job;
   }
 
+  /**
+   * Updates the print job and the printer state only. Order status is changed
+   * manually until a proper order <-> print job sync is designed.
+   */
   async updatePrintJobStatus(jobId: string, status: PrintJobStatus) {
     const job = await this.prisma.printJob.findUnique({ where: { id: jobId } });
+
     if (!job) {
       throw new NotFoundException(`Print job with ID "${jobId}" not found`);
     }
 
-    const updateData: any = { status };
+    const updateData: Prisma.PrintJobUpdateInput = { status };
+
     if (status === PrintJobStatus.PRINTING && !job.startedAt) {
       updateData.startedAt = new Date();
     } else if (status === PrintJobStatus.FINISHED && !job.finishedAt) {
@@ -207,29 +213,12 @@ export class PrintersService {
       data: updateData,
     });
 
-    // Sync order status
     if (status === PrintJobStatus.PRINTING) {
-      await this.prisma.order.update({
-        where: { id: job.orderId },
-        data: { status: OrderStatus.PRINTING },
-      });
       await this.prisma.printer.update({
         where: { id: job.printerId },
         data: { lastStatus: 'RUNNING' },
       });
     } else if (status === PrintJobStatus.FINISHED) {
-      const remainingUnfinished = await this.prisma.printJob.count({
-        where: {
-          orderId: job.orderId,
-          status: { in: [PrintJobStatus.QUEUED, PrintJobStatus.PRINTING, PrintJobStatus.PAUSED] },
-        },
-      });
-      if (remainingUnfinished === 0) {
-        await this.prisma.order.update({
-          where: { id: job.orderId },
-          data: { status: OrderStatus.PRINTED },
-        });
-      }
       await this.prisma.printer.update({
         where: { id: job.printerId },
         data: { lastStatus: 'IDLE' },

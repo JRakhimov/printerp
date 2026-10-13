@@ -8,6 +8,7 @@ import { ClientSelect } from './ClientSelect';
 import { CityInput } from './CityInput';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, ShoppingBag, Plus, Trash2, Loader2, Calculator, Calendar, DollarSign, CreditCard, UserPlus, Disc } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface CreateOrderModalProps {
   isOpen: boolean;
@@ -90,9 +91,9 @@ export const CreateOrderModal: React.FC<CreateOrderModalProps> = ({ isOpen, onCl
       setIsQuickCreatingClient(false);
       setQuickInstagram('');
       setQuickCity('Ташкент');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create quick client:', err);
-      alert(err?.response?.data?.message || 'Ошибка при создании клиента');
+      alert(formatApiError(err, 'Ошибка при создании клиента'));
     }
   };
 

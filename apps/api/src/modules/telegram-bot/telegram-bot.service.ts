@@ -2,6 +2,18 @@ import { Injectable, Logger, OnModuleInit, OnModuleDestroy, Optional } from '@ne
 import { ModuleRef } from '@nestjs/core';
 import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '../../database/prisma.service';
+import { getClientDisplayName } from '@printerp/shared';
+import { getErrorMessage } from '../../common/utils/error-message';
+import { escapeHtml } from '../../common/utils/escape-html';
+import { getAppTimeZone } from '../../common/utils/timezone';
+import {
+  InlineKeyboardMarkup,
+  NewOrderNotification,
+  TelegramApiResponse,
+  TelegramCallbackQuery,
+  TelegramMessage,
+  TelegramUpdate,
+} from './telegram-bot.types';
 
 @Injectable()
 export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
@@ -53,16 +65,17 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           continue;
         }
 
-        const data = await res.json();
+        const data = (await res.json()) as TelegramApiResponse<TelegramUpdate[]>;
+
         if (data.ok && Array.isArray(data.result)) {
           for (const update of data.result) {
             this.updateOffset = update.update_id + 1;
             await this.handleUpdate(update);
           }
         }
-      } catch (err: any) {
+      } catch (err) {
         if (this.isPolling) {
-          this.logger.error('Error in Telegram getUpdates polling:', err?.message || err);
+          this.logger.error('Error in Telegram getUpdates polling:', getErrorMessage(err));
           await new Promise((r) => setTimeout(r, 5000));
         }
       }
@@ -72,7 +85,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   /**
    * Handle incoming updates from Telegram
    */
-  private async handleUpdate(update: any) {
+  private async handleUpdate(update: TelegramUpdate) {
     if (update.callback_query) {
       await this.handleCallbackQuery(update.callback_query);
       return;
@@ -92,10 +105,16 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   /**
    * Process /start command
    */
-  private async handleStartCommand(message: any) {
+  private async handleStartCommand(message: TelegramMessage) {
+    const sender = message.from;
+
+    if (!sender) {
+      return;
+    }
+
     const chatId = message.chat.id.toString();
-    const telegramIdBigInt = BigInt(message.from.id);
-    const senderFirstName = message.from.first_name || message.from.username || 'Пользователь';
+    const telegramIdBigInt = BigInt(sender.id);
+    const senderFirstName = sender.first_name || sender.username || 'Пользователь';
 
     try {
       // Query DB for user in allowlist
@@ -109,7 +128,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         const webAppUrl = originsEnv.split(',')[0].trim();
 
         const replyText =
-          `👋 <b>Здравствуйте, ${dbUser.firstName || senderFirstName}!</b>\n\n` +
+          `👋 <b>Здравствуйте, ${escapeHtml(dbUser.firstName || senderFirstName)}!</b>\n\n` +
           `Добро пожаловать в <b>3D Print ERP</b> — систему управления вашей мастерской 3D-печати.\n\n` +
           `Вы авторизованы в белом списке. Нажмите кнопку ниже, чтобы открыть приложение:`;
 
@@ -124,24 +143,58 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           ],
         });
       } else {
-        // Access Denied: not in allowlist or disabled
-        const replyText =
-          `⛔️ <b>Доступ запрещён!</b>\n\n` +
-          `Ваш Telegram ID (<code>${message.from.id}</code>) отсутствует в белом списке системы 3D Print ERP или ваш аккаунт деактивирован.\n\n` +
-          `Пожалуйста, обратитесь к администратору мастерской для добавления вашего Telegram ID в систему.`;
-
-        await this.sendMessage(chatId, replyText);
+        await this.sendMessage(chatId, this.buildAccessDeniedText(sender.id));
       }
-    } catch (err: any) {
-      this.logger.error(`Error processing /start for chat ${chatId}:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error processing /start for chat ${chatId}:`, getErrorMessage(err));
+    }
+  }
+
+  /**
+   * Access denied reply for Telegram users missing from the allowlist or deactivated.
+   */
+  private buildAccessDeniedText(telegramId: number): string {
+    return (
+      `⛔️ <b>Доступ запрещён!</b>\n\n` +
+      `Ваш Telegram ID (<code>${telegramId}</code>) отсутствует в белом списке системы 3D Print ERP или ваш аккаунт деактивирован.\n\n` +
+      `Пожалуйста, обратитесь к администратору мастерской для добавления вашего Telegram ID в систему.`
+    );
+  }
+
+  /**
+   * Check that the Telegram user is in the allowlist and active.
+   * Fails closed: any lookup error denies access.
+   */
+  private async isAllowedTelegramUser(telegramId: number): Promise<boolean> {
+    try {
+      const user = await this.prisma.user.findUnique({
+        where: { telegramId: BigInt(telegramId) },
+        select: { isActive: true },
+      });
+
+      return Boolean(user?.isActive);
+    } catch (err) {
+      this.logger.error(`Failed to check allowlist for Telegram user ${telegramId}:`, getErrorMessage(err));
+      return false;
     }
   }
 
   /**
    * Process /camera or /photo command - list available printers with inline buttons
    */
-  private async handleCameraListCommand(message: any) {
+  private async handleCameraListCommand(message: TelegramMessage) {
     const chatId = message.chat.id.toString();
+    const sender = message.from;
+
+    if (!sender) {
+      return;
+    }
+
+    if (!(await this.isAllowedTelegramUser(sender.id))) {
+      await this.sendMessage(chatId, this.buildAccessDeniedText(sender.id));
+      return;
+    }
+
     try {
       const printers = await this.prisma.printer.findMany({
         where: { isActive: true },
@@ -163,15 +216,15 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       await this.sendMessage(chatId, '📹 <b>Выберите принтер для получения снимка стола:</b>', {
         inline_keyboard: buttons,
       });
-    } catch (err: any) {
-      this.logger.error(`Error handling /camera command:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error handling /camera command:`, getErrorMessage(err));
     }
   }
 
   /**
    * Handle inline callback queries from Telegram buttons
    */
-  private async handleCallbackQuery(query: any) {
+  private async handleCallbackQuery(query: TelegramCallbackQuery) {
     const data = query.data;
     const chatId = query.message?.chat?.id?.toString();
     if (!data || !chatId) return;
@@ -183,6 +236,11 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         body: JSON.stringify({ callback_query_id: query.id }),
       });
     } catch {}
+
+    if (!(await this.isAllowedTelegramUser(query.from.id))) {
+      await this.sendMessage(chatId, this.buildAccessDeniedText(query.from.id));
+      return;
+    }
 
     if (data.startsWith('cam_snap:')) {
       const printerId = data.replace('cam_snap:', '');
@@ -214,7 +272,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         return;
       }
 
-      await this.sendMessage(chatId, `📸 <i>Получаю снимок с камеры принтера ${printer.name}...</i>`);
+      await this.sendMessage(chatId, `📸 <i>Получаю снимок с камеры принтера ${escapeHtml(printer.name)}...</i>`);
 
       const frame = await cameraService.getSnapshot(printerId);
       const timeStr = new Date().toLocaleTimeString('ru-RU', {
@@ -222,7 +280,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         hour: '2-digit',
         minute: '2-digit',
       });
-      const caption = `📸 <b>${printer.name}</b> (${printer.model || printer.manufacturer})\n🕒 <i>Время: ${timeStr}</i>`;
+      const caption =
+        `📸 <b>${escapeHtml(printer.name)}</b> (${escapeHtml(printer.model || printer.manufacturer)})\n` +
+        `🕒 <i>Время: ${timeStr}</i>`;
 
       await this.sendPhoto(chatId, frame, caption, {
         inline_keyboard: [
@@ -234,11 +294,13 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           ],
         ],
       });
-    } catch (err: any) {
-      this.logger.error(`Failed to handle camera snapshot for printer ${printerId}:`, err?.message || err);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : '';
+
+      this.logger.error(`Failed to handle camera snapshot for printer ${printerId}:`, getErrorMessage(err));
       await this.sendMessage(
         chatId,
-        `⚠️ Не удалось получить снимок с камеры принтера: ${err?.message || 'Таймаут'}`,
+        `⚠️ Не удалось получить снимок с камеры принтера: ${escapeHtml(errorMessage || 'Таймаут')}`,
       );
     }
   }
@@ -246,7 +308,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
   /**
    * Send notification to all active system users except the creator of the order.
    */
-  async notifyNewOrder(order: any, creatorUserId?: string) {
+  async notifyNewOrder(order: NewOrderNotification, creatorUserId?: string) {
     if (!this.isEnabled) return;
 
     try {
@@ -264,23 +326,23 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
 
       // 2. Format notification text
       const orderNumber = `${order.orderNumber}`;
-      const clientName = order.client?.instagramUsername || 'Неизвестный клиент';
+      const clientName = order.client ? getClientDisplayName(order.client) : 'Неизвестный клиент';
       const finalPrice = Number(order.finalPrice || 0).toLocaleString('ru-RU');
 
       const itemsList =
         order.items
-          ?.map((item: any) => `  • <b>${item.projectNameSnapshot}</b> (x${item.quantity})`)
+          ?.map((item) => `  • <b>${escapeHtml(item.projectNameSnapshot)}</b> (x${item.quantity})`)
           .join('\n') || '  • Нет позиций';
 
       const deadlineText = order.deadline
         ? `\n⏱ <b>Срок:</b> ${new Date(order.deadline).toLocaleDateString('ru-RU')}`
         : '';
 
-      const commentText = order.comment ? `\n💬 <b>Коммент:</b> ${order.comment}` : '';
+      const commentText = order.comment ? `\n💬 <b>Коммент:</b> ${escapeHtml(order.comment)}` : '';
 
       const messageText =
         `📦 <b>Новый заказ ${orderNumber}</b>\n\n` +
-        `👤 <b>Клиент:</b> ${clientName}\n` +
+        `👤 <b>Клиент:</b> ${escapeHtml(clientName)}\n` +
         `💰 <b>Сумма:</b> ${finalPrice} сум\n` +
         `📝 <b>Позиции:</b>\n${itemsList}` +
         `${deadlineText}` +
@@ -291,8 +353,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         const chatId = user.telegramId.toString();
         this.sendMessage(chatId, messageText);
       }
-    } catch (err: any) {
-      this.logger.error('Failed to process new order notification:', err?.message || err);
+    } catch (err) {
+      this.logger.error('Failed to process new order notification:', getErrorMessage(err));
     }
   }
 
@@ -348,12 +410,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
    * Get configured application timezone (default Asia/Tashkent, UTC+5)
    */
   getTimeZone(): string {
-    return (
-      this.configService.get<string>('TIMEZONE') ||
-      process.env.TIMEZONE ||
-      process.env.TZ ||
-      'Asia/Tashkent'
-    );
+    return this.configService.get<string>('TIMEZONE') || getAppTimeZone();
   }
 
   /**
@@ -424,8 +481,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
    */
   formatPrinterStatusMessage(data: PrinterStatusNotificationData): string {
     const printerTitle = data.printerModel
-      ? `<b>${data.printerName}</b> (${data.printerModel})`
-      : `<b>${data.printerName}</b>`;
+      ? `<b>${escapeHtml(data.printerName)}</b> (${escapeHtml(data.printerModel)})`
+      : `<b>${escapeHtml(data.printerName)}</b>`;
 
     const remainingMinutes =
       data.remainingMinutes !== undefined && data.remainingMinutes > 0
@@ -435,9 +492,9 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
     const remainingStr = remainingMinutes ? this.formatDuration(remainingMinutes) : null;
     const finishStr = remainingMinutes ? this.formatEstimatedFinish(remainingMinutes) : null;
 
-    const fileLine = data.currentFile ? `📄 <b>Файл:</b> <code>${data.currentFile}</code>\n` : '';
+    const fileLine = data.currentFile ? `📄 <b>Файл:</b> <code>${escapeHtml(data.currentFile)}</code>\n` : '';
     const orderLine = data.orderNumber ? `📦 <b>Заказ:</b> №${data.orderNumber}\n` : '';
-    const clientLine = data.clientName ? `👤 <b>Клиент:</b> ${data.clientName}\n` : '';
+    const clientLine = data.clientName ? `👤 <b>Клиент:</b> ${escapeHtml(data.clientName)}\n` : '';
 
     switch (data.eventType) {
       case 'STARTED': {
@@ -467,7 +524,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
       case 'PAUSED': {
         const progressLine = data.progress !== undefined ? `📊 <b>Прогресс:</b> ${Math.round(data.progress)}%\n` : '';
         const timeLine = remainingStr ? `⏱ <b>Оставалось:</b> ~${remainingStr}\n` : '';
-        const reasonLine = data.errorMessage ? `⚠️ <b>Причина:</b> ${data.errorMessage}\n` : '';
+        const reasonLine = data.errorMessage ? `⚠️ <b>Причина:</b> ${escapeHtml(data.errorMessage)}\n` : '';
 
         return (
           `⏸ <b>Печать приостановлена (Пауза)</b>\n\n` +
@@ -526,7 +583,7 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         const progressLine =
           data.progress !== undefined ? `📊 <b>Прогресс на момент сбоя:</b> ${Math.round(data.progress)}%\n` : '';
         const reasonLine = data.errorMessage
-          ? `⚠️ <b>Ошибка:</b> ${data.errorMessage}\n`
+          ? `⚠️ <b>Ошибка:</b> ${escapeHtml(data.errorMessage)}\n`
           : '⚠️ <b>Сбой задания печати</b>\n';
 
         return (
@@ -596,15 +653,20 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
           this.sendMessage(chatId, messageText);
         }
       }
-    } catch (err: any) {
-      this.logger.error('Failed to process printer status notification:', err?.message || err);
+    } catch (err) {
+      this.logger.error('Failed to process printer status notification:', getErrorMessage(err));
     }
   }
 
   /**
    * Helper to send photo via Telegram Bot API
    */
-  async sendPhoto(chatId: string, photoBuffer: Buffer, caption?: string, replyMarkup?: any) {
+  async sendPhoto(
+    chatId: string,
+    photoBuffer: Buffer,
+    caption?: string,
+    replyMarkup?: InlineKeyboardMarkup,
+  ) {
     if (!this.isEnabled) return;
 
     try {
@@ -630,15 +692,15 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         const body = await response.text();
         this.logger.warn(`Failed to send Telegram photo to ${chatId}: ${body}`);
       }
-    } catch (err: any) {
-      this.logger.error(`Error sending Telegram photo to ${chatId}:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error sending Telegram photo to ${chatId}:`, getErrorMessage(err));
     }
   }
 
   /**
    * Low-level helper to send message via Telegram Bot API
    */
-  private async sendMessage(chatId: string, text: string, replyMarkup?: any) {
+  private async sendMessage(chatId: string, text: string, replyMarkup?: InlineKeyboardMarkup) {
     try {
       const url = `https://api.telegram.org/bot${this.botToken}/sendMessage`;
       const response = await fetch(url, {
@@ -656,8 +718,8 @@ export class TelegramBotService implements OnModuleInit, OnModuleDestroy {
         const body = await response.text();
         this.logger.warn(`Failed to send Telegram message to ${chatId}: ${body}`);
       }
-    } catch (err: any) {
-      this.logger.error(`Error sending Telegram message to ${chatId}:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error sending Telegram message to ${chatId}:`, getErrorMessage(err));
     }
   }
 }

@@ -21,14 +21,14 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   useEffect(() => {
     const root = document.documentElement;
-    const tg = (window as any).Telegram?.WebApp;
+    const tg = window.Telegram?.WebApp;
     if (theme === 'light') {
       root.classList.add('light');
       root.classList.remove('dark');
       if (tg) {
         try {
-          tg.setHeaderColor('#ffffff');
-          tg.setBackgroundColor('#f8fafc');
+          tg.setHeaderColor?.('#ffffff');
+          tg.setBackgroundColor?.('#f8fafc');
         } catch (e) {}
       }
     } else {
@@ -36,8 +36,8 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       root.classList.remove('light');
       if (tg) {
         try {
-          tg.setHeaderColor('#0f172a');
-          tg.setBackgroundColor('#0f172a');
+          tg.setHeaderColor?.('#0f172a');
+          tg.setBackgroundColor?.('#0f172a');
         } catch (e) {}
       }
     }

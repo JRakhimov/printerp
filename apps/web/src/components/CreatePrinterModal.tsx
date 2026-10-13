@@ -21,6 +21,7 @@ import {
   Activity,
   Clock,
 } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface CreatePrinterModalProps {
   isOpen: boolean;
@@ -98,10 +99,10 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
         success: res.success,
         message: res.message,
       });
-    } catch (err: any) {
+    } catch (err) {
       setTestResult({
         success: false,
-        message: err.response?.data?.message || 'Ошибка подключения. Проверьте IP и статус принтера.',
+        message: formatApiError(err, 'Ошибка подключения. Проверьте IP и статус принтера.'),
       });
     }
   };
@@ -119,9 +120,9 @@ export const CreatePrinterModal: React.FC<CreatePrinterModalProps> = ({ isOpen, 
       reset();
       setTestResult(null);
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to create printer:', err);
-      alert(err.response?.data?.message || 'Ошибка добавления принтера');
+      alert(formatApiError(err, 'Ошибка добавления принтера'));
     }
   };
 

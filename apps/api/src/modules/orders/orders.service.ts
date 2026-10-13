@@ -2,7 +2,7 @@ import { Injectable, NotFoundException, BadRequestException } from '@nestjs/comm
 import { PrismaService } from '../../database/prisma.service';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import { CreateOrderDto, UpdateOrderDto, ChangeOrderStatusDto } from '@printerp/shared';
-import { OrderStatus, PaymentStatus } from '@prisma/client';
+import { OrderStatus, PaymentStatus, Prisma } from '@prisma/client';
 import { OrderInventoryService } from './order-inventory.service';
 
 @Injectable()
@@ -113,7 +113,7 @@ export class OrdersService {
   }
 
   async findAll(filters?: { status?: OrderStatus; search?: string }) {
-    const where: any = {};
+    const where: Prisma.OrderWhereInput = {};
 
     if (filters?.status) {
       where.status = filters.status;
@@ -147,7 +147,7 @@ export class OrdersService {
     });
   }
 
-  async findOne(id: string, db: any = this.prisma): Promise<any> {
+  async findOne(id: string, db: Prisma.TransactionClient = this.prisma) {
     const order = await db.order.findFirst({
       where: { id },
       include: {
@@ -230,135 +230,135 @@ export class OrdersService {
 
   async update(id: string, userId: string, dto: UpdateOrderDto) {
     return this.prisma.$transaction(async (tx) => {
-    const existingOrder = await this.findOne(id, tx);
+      const existingOrder = await this.findOne(id, tx);
 
-    let calculatedCost: number | undefined;
-    let calculatedPrice: number | undefined;
-    let itemsData: any[] | undefined;
+      let calculatedCost: number | undefined;
+      let calculatedPrice: number | undefined;
+      let itemsData: Prisma.OrderItemUncheckedCreateWithoutOrderInput[] | undefined;
 
-    if (dto.items && dto.items.length > 0) {
-      const projectIds = dto.items.map((i) => i.projectId);
-      const projects = await tx.project.findMany({
-        where: { id: { in: projectIds }, deletedAt: null },
-      });
-      const projectMap = new Map(projects.map((p) => [p.id, p]));
+      if (dto.items && dto.items.length > 0) {
+        const projectIds = dto.items.map((i) => i.projectId);
+        const projects = await tx.project.findMany({
+          where: { id: { in: projectIds }, deletedAt: null },
+        });
+        const projectMap = new Map(projects.map((p) => [p.id, p]));
 
-      calculatedCost = 0;
-      calculatedPrice = 0;
+        calculatedCost = 0;
+        calculatedPrice = 0;
 
-      itemsData = dto.items.map((item) => {
-        const project = projectMap.get(item.projectId);
-        if (!project) {
-          throw new NotFoundException(`Project with ID "${item.projectId}" not found`);
+        itemsData = dto.items.map((item) => {
+          const project = projectMap.get(item.projectId);
+          if (!project) {
+            throw new NotFoundException(`Project with ID "${item.projectId}" not found`);
+          }
+
+          const unitCost = item.unitCost !== undefined ? item.unitCost : project.defaultCost;
+          const unitPrice = item.unitPrice !== undefined ? item.unitPrice : project.defaultPrice;
+          const totalCost = unitCost * item.quantity;
+          const totalPrice = unitPrice * item.quantity;
+
+          calculatedCost! += totalCost;
+          calculatedPrice! += totalPrice;
+
+          return {
+            projectId: project.id,
+            projectNameSnapshot: project.name,
+            quantity: item.quantity,
+            unitCost,
+            unitPrice,
+            totalCost,
+            totalPrice,
+            metadata: item.filaments && item.filaments.length > 0 ? { filaments: item.filaments } : undefined,
+          };
+        });
+
+        // Adjust filament stock if order is active
+        if (existingOrder.status !== OrderStatus.CANCELLED) {
+          await this.inventory.restore(existingOrder.items, tx);
+          await this.inventory.deduct(dto.items, tx);
         }
 
-        const unitCost = item.unitCost !== undefined ? item.unitCost : project.defaultCost;
-        const unitPrice = item.unitPrice !== undefined ? item.unitPrice : project.defaultPrice;
-        const totalCost = unitCost * item.quantity;
-        const totalPrice = unitPrice * item.quantity;
-
-        calculatedCost! += totalCost;
-        calculatedPrice! += totalPrice;
-
-        return {
-          projectId: project.id,
-          projectNameSnapshot: project.name,
-          quantity: item.quantity,
-          unitCost,
-          unitPrice,
-          totalCost,
-          totalPrice,
-          metadata: item.filaments && item.filaments.length > 0 ? { filaments: item.filaments } : undefined,
-        };
-      });
-
-      // Adjust filament stock if order is active
-      if (existingOrder.status !== OrderStatus.CANCELLED) {
-        await this.inventory.restore(existingOrder.items, tx);
-        await this.inventory.deduct(dto.items, tx);
+        // Delete existing order items before recreating new items
+        await tx.orderItem.deleteMany({
+          where: { orderId: id },
+        });
       }
 
-      // Delete existing order items before recreating new items
-      await tx.orderItem.deleteMany({
-        where: { orderId: id },
-      });
-    }
+      const resolvedFinalPrice = dto.finalPrice !== undefined
+        ? dto.finalPrice
+        : calculatedPrice !== undefined
+          ? calculatedPrice
+          : existingOrder.finalPrice;
 
-    const resolvedFinalPrice = dto.finalPrice !== undefined
-      ? dto.finalPrice
-      : calculatedPrice !== undefined
-        ? calculatedPrice
-        : existingOrder.finalPrice;
+      // Handle depositAmount update if passed
+      let paymentStatus: PaymentStatus | undefined = dto.paymentStatus;
+      if (dto.depositAmount !== undefined) {
+        const newDeposit = dto.depositAmount;
+        const currentPayments = existingOrder.payments || [];
+        const currentTotalPaid = currentPayments.reduce((acc, p) => acc + p.amount, 0);
 
-    // Handle depositAmount update if passed
-    let paymentStatus: PaymentStatus | undefined = dto.paymentStatus;
-    if (dto.depositAmount !== undefined) {
-      const newDeposit = dto.depositAmount;
-      const currentPayments = existingOrder.payments || [];
-      const currentTotalPaid = currentPayments.reduce((acc, p) => acc + p.amount, 0);
+        if (newDeposit !== currentTotalPaid) {
+          if (newDeposit === 0) {
+            await tx.payment.deleteMany({ where: { orderId: id } });
+          } else if (currentPayments.length === 1) {
+            await tx.payment.update({
+              where: { id: currentPayments[0].id },
+              data: {
+                amount: newDeposit,
+                comment: dto.depositComment || currentPayments[0].comment || 'Deposit payment',
+              },
+            });
+          } else {
+            // Replace or consolidate existing payments into updated deposit
+            await tx.payment.deleteMany({ where: { orderId: id } });
+            await tx.payment.create({
+              data: {
+                orderId: id,
+                amount: newDeposit,
+                comment: dto.depositComment || 'Updated deposit payment',
+                createdById: userId,
+              },
+            });
+          }
+        }
 
-      if (newDeposit !== currentTotalPaid) {
-        if (newDeposit === 0) {
-          await tx.payment.deleteMany({ where: { orderId: id } });
-        } else if (currentPayments.length === 1) {
-          await tx.payment.update({
-            where: { id: currentPayments[0].id },
-            data: {
-              amount: newDeposit,
-              comment: dto.depositComment || currentPayments[0].comment || 'Deposit payment',
-            },
-          });
+        if (newDeposit >= resolvedFinalPrice && resolvedFinalPrice > 0) {
+          paymentStatus = PaymentStatus.PAID;
+        } else if (newDeposit > 0) {
+          paymentStatus = PaymentStatus.PARTIALLY_PAID;
         } else {
-          // Replace or consolidate existing payments into updated deposit
-          await tx.payment.deleteMany({ where: { orderId: id } });
-          await tx.payment.create({
-            data: {
-              orderId: id,
-              amount: newDeposit,
-              comment: dto.depositComment || 'Updated deposit payment',
-              createdById: userId,
-            },
-          });
+          paymentStatus = PaymentStatus.UNPAID;
         }
       }
 
-      if (newDeposit >= resolvedFinalPrice && resolvedFinalPrice > 0) {
-        paymentStatus = PaymentStatus.PAID;
-      } else if (newDeposit > 0) {
-        paymentStatus = PaymentStatus.PARTIALLY_PAID;
-      } else {
-        paymentStatus = PaymentStatus.UNPAID;
-      }
-    }
-
-    return tx.order.update({
-      where: { id },
-      data: {
-        clientId: dto.clientId,
-        deadline: dto.deadline ? new Date(dto.deadline) : dto.deadline === null ? null : undefined,
-        comment: dto.comment,
-        calculatedCost: calculatedCost !== undefined ? calculatedCost : undefined,
-        calculatedPrice: calculatedPrice !== undefined ? calculatedPrice : undefined,
-        finalPrice: dto.finalPrice !== undefined ? dto.finalPrice : calculatedPrice !== undefined ? calculatedPrice : undefined,
-        paymentStatus: paymentStatus !== undefined ? paymentStatus : undefined,
-        updatedById: userId,
-        items: itemsData ? {
-          create: itemsData,
-        } : undefined,
-      },
-      include: {
-        client: true,
-        items: {
-          include: {
-            project: true,
+      return tx.order.update({
+        where: { id },
+        data: {
+          clientId: dto.clientId,
+          deadline: dto.deadline ? new Date(dto.deadline) : dto.deadline === null ? null : undefined,
+          comment: dto.comment,
+          calculatedCost: calculatedCost !== undefined ? calculatedCost : undefined,
+          calculatedPrice: calculatedPrice !== undefined ? calculatedPrice : undefined,
+          finalPrice: dto.finalPrice !== undefined ? dto.finalPrice : calculatedPrice !== undefined ? calculatedPrice : undefined,
+          paymentStatus: paymentStatus !== undefined ? paymentStatus : undefined,
+          updatedById: userId,
+          items: itemsData ? {
+            create: itemsData,
+          } : undefined,
+        },
+        include: {
+          client: true,
+          items: {
+            include: {
+              project: true,
+            },
+          },
+          payments: true,
+          events: {
+            orderBy: { createdAt: 'desc' },
           },
         },
-        payments: true,
-        events: {
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    });
+      });
     });
   }
 

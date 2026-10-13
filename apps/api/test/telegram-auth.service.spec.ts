@@ -11,6 +11,7 @@ describe('TelegramAuthService', () => {
   let service: TelegramAuthService;
   let prismaService: any;
   let jwtService: any;
+  let configValues: Record<string, string>;
 
   const BOT_TOKEN = '123456789:ABCdefGHIjklMNOpqrsTUVwxyZ';
   const ALLOWED_TELEGRAM_ID = 123456789;
@@ -40,9 +41,15 @@ describe('TelegramAuthService', () => {
   }
 
   beforeEach(async () => {
+    configValues = {
+      TELEGRAM_BOT_TOKEN: BOT_TOKEN,
+      DEV_BYPASS_AUTH: 'false',
+    };
+
     prismaService = {
       user: {
         findUnique: jest.fn(),
+        findFirst: jest.fn(),
         update: jest.fn(),
       },
     };
@@ -57,11 +64,7 @@ describe('TelegramAuthService', () => {
         {
           provide: ConfigService,
           useValue: {
-            get: jest.fn((key: string) => {
-              if (key === 'TELEGRAM_BOT_TOKEN') return BOT_TOKEN;
-              if (key === 'DEV_BYPASS_AUTH') return 'false';
-              return null;
-            }),
+            get: jest.fn((key: string) => configValues[key] ?? null),
           },
         },
         {
@@ -147,6 +150,39 @@ describe('TelegramAuthService', () => {
       });
 
       await expect(service.authenticate(validInitData)).rejects.toThrow(ForbiddenException);
+    });
+  });
+
+  describe('dev bypass', () => {
+    it('should accept dev_user_ logins outside production when bypass is enabled', () => {
+      configValues.DEV_BYPASS_AUTH = 'true';
+
+      const result = service.validateTelegramInitData('dev_user_42');
+
+      expect(result.id).toBe(42);
+    });
+
+    it('should reject dev_user_ logins in production even when bypass is enabled', () => {
+      configValues.DEV_BYPASS_AUTH = 'true';
+      configValues.NODE_ENV = 'production';
+
+      expect(() => service.validateTelegramInitData('dev_user_42')).toThrow(UnauthorizedException);
+    });
+
+    it('should not log a real Telegram user in as another user when bypass is enabled', async () => {
+      configValues.DEV_BYPASS_AUTH = 'true';
+      const validInitData = createValidInitData(DENIED_TELEGRAM_ID);
+
+      prismaService.user.findUnique.mockResolvedValue(null);
+      prismaService.user.findFirst.mockResolvedValue({
+        id: 'owner-uuid',
+        telegramId: BigInt(ALLOWED_TELEGRAM_ID),
+        role: Role.OWNER,
+        isActive: true,
+      });
+
+      await expect(service.authenticate(validInitData)).rejects.toThrow(ForbiddenException);
+      expect(prismaService.user.findFirst).not.toHaveBeenCalled();
     });
   });
 });

@@ -24,6 +24,7 @@ import {
   Gauge,
   Camera,
 } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 export const PrintersPage: React.FC = () => {
   const showFinishTime = useTimeCycle(3000);
@@ -67,12 +68,12 @@ export const PrintersPage: React.FC = () => {
         [printer.id]: { success: res.success, message: res.message },
       }));
       refetch();
-    } catch (err: any) {
+    } catch (err) {
       setTestMessages((prev) => ({
         ...prev,
         [printer.id]: {
           success: false,
-          message: err.response?.data?.message || 'Ошибка подключения',
+          message: formatApiError(err, 'Ошибка подключения'),
         },
       }));
     } finally {

@@ -22,16 +22,33 @@ export class TelegramAuthService {
   ) {}
 
   /**
+   * Fake `dev_user_*` logins for local browser testing.
+   * Enabled by DEV_BYPASS_AUTH=true or a placeholder bot token, never in production.
+   */
+  private isDevBypassEnabled(): boolean {
+    if (this.configService.get<string>('NODE_ENV') === 'production') {
+      return false;
+    }
+
+    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
+    const devBypassEnv = this.configService.get<string>('DEV_BYPASS_AUTH');
+    const isPlaceholderToken = !botToken || botToken.includes('ABCdefGHIjklMNOpqrsTUVwxyZ');
+
+    return devBypassEnv === 'true' || (devBypassEnv !== 'false' && isPlaceholderToken);
+  }
+
+  private isDevLogin(initData: string): boolean {
+    return this.isDevBypassEnabled() && initData.startsWith('dev_user_');
+  }
+
+  /**
    * Validate Telegram initData string using HMAC-SHA256 algorithm.
    */
   public validateTelegramInitData(initData: string): TelegramUserData {
     const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
-    const devBypassEnv = this.configService.get<string>('DEV_BYPASS_AUTH');
-    const isPlaceholderToken = !botToken || botToken.includes('ABCdefGHIjklMNOpqrsTUVwxyZ');
-    const devBypass = devBypassEnv === 'true' || (devBypassEnv !== 'false' && isPlaceholderToken);
 
     // Dev mode mock / bypass test handler
-    if (devBypass && initData.startsWith('dev_user_')) {
+    if (this.isDevLogin(initData)) {
       const defaultOwnerId = parseInt(this.configService.get<string>('INITIAL_OWNER_TELEGRAM_ID') || '123456789', 10);
       const parsedId = parseInt(initData.replace('dev_user_', ''), 10);
       const devTelegramId = isNaN(parsedId) ? defaultOwnerId : parsedId;
@@ -116,13 +133,9 @@ export class TelegramAuthService {
       where: { telegramId: telegramIdBigInt },
     });
 
-    // In dev mode / bypass, fallback to first active user so local browser testing works
-    const botToken = this.configService.get<string>('TELEGRAM_BOT_TOKEN') || '';
-    const devBypassEnv = this.configService.get<string>('DEV_BYPASS_AUTH');
-    const isPlaceholderToken = !botToken || botToken.includes('ABCdefGHIjklMNOpqrsTUVwxyZ');
-    const devBypass = devBypassEnv === 'true' || (devBypassEnv !== 'false' && isPlaceholderToken);
-
-    if (!user && (devBypass || initData.startsWith('dev_user_'))) {
+    // Fake dev logins fall back to the first active user so local browser testing works.
+    // Real Telegram users must always be in the allowlist themselves.
+    if (!user && this.isDevLogin(initData)) {
       user = await this.prisma.user.findFirst({
         where: { isActive: true },
         orderBy: { createdAt: 'asc' },

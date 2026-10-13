@@ -23,12 +23,14 @@ async function bootstrap() {
   );
 
   // Configure CORS for Telegram Mini App frontend
+  // Auth uses a Bearer header, not cookies, so credentials are only allowed for explicit origins
   const allowedOriginsEnv = configService.get<string>('ALLOWED_ORIGINS') || '*';
-  const allowedOrigins = allowedOriginsEnv === '*' ? '*' : allowedOriginsEnv.split(',').map((s) => s.trim());
+  const allowAnyOrigin = allowedOriginsEnv === '*';
+  const allowedOrigins = allowAnyOrigin ? '*' : allowedOriginsEnv.split(',').map((origin) => origin.trim());
 
   app.enableCors({
     origin: allowedOrigins,
-    credentials: true,
+    credentials: !allowAnyOrigin,
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     allowedHeaders: 'Content-Type,Accept,Authorization',
   });

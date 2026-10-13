@@ -11,7 +11,7 @@ import {
   OrderQuerySchema,
 } from '@printerp/shared';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { CurrentUser } from '../auth/current-user.decorator';
+import { AuthenticatedUser, CurrentUser } from '../auth/current-user.decorator';
 import { ZodValidationPipe } from '../../common/pipes/zod-validation.pipe';
 
 @Controller('orders')
@@ -21,7 +21,7 @@ export class OrdersController {
 
   @Post()
   create(
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(CreateOrderSchema)) createOrderDto: CreateOrderDto,
   ) {
     return this.ordersService.create(user.id, createOrderDto);
@@ -40,7 +40,7 @@ export class OrdersController {
   @Patch(':id/status')
   updateStatus(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(ChangeOrderStatusSchema)) changeStatusDto: ChangeOrderStatusDto,
   ) {
     return this.ordersService.updateStatus(id, user.id, changeStatusDto);
@@ -49,7 +49,7 @@ export class OrdersController {
   @Patch(':id')
   update(
     @Param('id', new ParseUUIDPipe()) id: string,
-    @CurrentUser() user: any,
+    @CurrentUser() user: AuthenticatedUser,
     @Body(new ZodValidationPipe(UpdateOrderSchema)) updateOrderDto: UpdateOrderDto,
   ) {
     return this.ordersService.update(id, user.id, updateOrderDto);

@@ -9,6 +9,7 @@ import {
 } from '@printerp/shared';
 import { useCreateTransaction } from '../hooks/useFinance';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { formatApiError } from '../lib/api-error';
 import { X, DollarSign, Loader2, Calendar, Tag, MessageSquare } from 'lucide-react';
 
 interface CreateExpenseModalProps {
@@ -86,7 +87,7 @@ export const CreateExpenseModal: React.FC<CreateExpenseModalProps> = ({ isOpen, 
 
           {createTx.isError && (
             <div className="p-3 bg-rose-500/10 border border-rose-500/30 rounded-xl text-rose-400 text-xs">
-              {(createTx.error as any)?.response?.data?.message || 'Ошибка при сохранении операции. Проверьте правильность полей.'}
+              {formatApiError(createTx.error, 'Ошибка при сохранении операции. Проверьте правильность полей.')}
             </div>
           )}
 

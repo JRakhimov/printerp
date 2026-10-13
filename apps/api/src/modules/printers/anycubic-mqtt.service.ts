@@ -1,18 +1,67 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import * as crypto from 'crypto';
+import { Prisma } from '@prisma/client';
+import * as mqtt from 'mqtt';
+import { MqttClient } from 'mqtt';
 import { PrismaService } from '../../database/prisma.service';
 import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
-import {
-  OrderStatus,
-  PrintJobStatus,
-  PrinterManufacturer,
-} from '@printerp/shared';
+import { PrintJobStatus, PrinterManufacturer } from '@printerp/shared';
+import { getErrorCode, getErrorMessage } from '../../common/utils/error-message';
+import { PrinterMqttClientOptions } from './mqtt-options';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const mqtt = require('mqtt');
+/**
+ * Print job section of an Anycubic `info` / `print` report.
+ */
+interface AnycubicProjectReport {
+  state?: string;
+  print_status?: number | string;
+  pause?: number;
+  progress?: number | string;
+  remain_time?: number | string;
+  filename?: string;
+}
 
-type MqttClient = any;
-type IClientOptions = any;
+interface AnycubicTemperatureReport {
+  curr_nozzle_temp?: number | string;
+  curr_hotbed_temp?: number | string;
+}
+
+interface AnycubicReportData extends AnycubicProjectReport, AnycubicTemperatureReport {
+  urls?: { rtspUrl?: string } | null;
+  project?: AnycubicProjectReport | null;
+  last_project?: AnycubicProjectReport | null;
+  temp?: AnycubicTemperatureReport | null;
+}
+
+export interface AnycubicReportPayload {
+  type?: string;
+  state?: unknown;
+  data?: AnycubicReportData | null;
+}
+
+interface AnycubicInfoResponse {
+  token?: unknown;
+  modelId?: string | number;
+  modelName?: string;
+  cn?: string;
+  ctrlInfoUrl?: string;
+}
+
+interface AnycubicCtrlResponse {
+  code?: number;
+  message?: string;
+  data?: {
+    info?: string;
+    token?: string;
+  };
+}
+
+interface AnycubicDecryptedCredentials {
+  broker?: string;
+  username: string;
+  password: string;
+  deviceId: string;
+}
 
 export interface AnycubicTelemetry {
   gcodeState?: string;
@@ -143,12 +192,14 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     let infoRes: Response;
     try {
       infoRes = await fetch(infoUrl, { signal: controller.signal });
-    } catch (err: any) {
+    } catch (err) {
       clearTimeout(timeout);
-      if (err.name === 'AbortError') {
+
+      if (err instanceof Error && err.name === 'AbortError') {
         throw new Error(`Connection timed out to http://${cleanIp}:18910/info. Check if printer IP is correct and LAN mode is enabled.`);
       }
-      throw new Error(`Failed to reach Anycubic printer at http://${cleanIp}:18910: ${err.message}`);
+
+      throw new Error(`Failed to reach Anycubic printer at http://${cleanIp}:18910: ${getErrorMessage(err)}`);
     }
     clearTimeout(timeout);
 
@@ -156,7 +207,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       throw new Error(`Printer returned HTTP status ${infoRes.status} on /info`);
     }
 
-    const infoData = await infoRes.json();
+    const infoData = (await infoRes.json()) as AnycubicInfoResponse;
     const token = infoData.token;
     if (!token || typeof token !== 'string' || token.length < 32) {
       throw new Error('Invalid token received from Anycubic printer on /info');
@@ -185,9 +236,9 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         method: 'POST',
         signal: postController.signal,
       });
-    } catch (err: any) {
+    } catch (err) {
       clearTimeout(postTimeout);
-      throw new Error(`Failed to request /ctrl from Anycubic printer: ${err.message}`);
+      throw new Error(`Failed to request /ctrl from Anycubic printer: ${getErrorMessage(err)}`);
     }
     clearTimeout(postTimeout);
 
@@ -195,7 +246,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       throw new Error(`Printer returned HTTP status ${postRes.status} on /ctrl`);
     }
 
-    const ctrlJson = await postRes.json();
+    const ctrlJson = (await postRes.json()) as AnycubicCtrlResponse;
     if (ctrlJson.code !== 200 || !ctrlJson.data?.info) {
       throw new Error(`Handshake failed: ${ctrlJson.message || 'no info returned from /ctrl'}`);
     }
@@ -215,7 +266,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       decipher.final(),
     ]).toString('utf-8');
 
-    const decryptedInfo = JSON.parse(decrypted);
+    const decryptedInfo: AnycubicDecryptedCredentials = JSON.parse(decrypted);
 
     return {
       broker: decryptedInfo.broker || `mqtts://${cleanIp}:9883`,
@@ -261,7 +312,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         }).catch(() => {});
       }
 
-      const options: IClientOptions = {
+      const options: PrinterMqttClientOptions = {
         host: cleanIp,
         port: 9883,
         family: 4,
@@ -294,7 +345,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
 
       client.on('connect', () => {
         this.logger.log(`✅ Connected to Anycubic printer "${printer.name}" via MQTT`);
-        client.subscribe(reportTopic, (err: any) => {
+        client.subscribe(reportTopic, (err) => {
           if (err) {
             this.logger.error(`Failed to subscribe to ${reportTopic} for "${printer.name}":`, err);
           } else {
@@ -319,15 +370,15 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         }
       });
 
-      client.on('error', (err: any) => {
+      client.on('error', (err) => {
         this.logger.warn(`MQTT error on Anycubic "${printer.name}": ${err.message}`);
       });
 
       client.on('offline', () => {
         this.logger.log(`Anycubic printer "${printer.name}" went offline`);
       });
-    } catch (err: any) {
-      this.logger.error(`Error connecting to Anycubic printer "${printer.name}":`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error connecting to Anycubic printer "${printer.name}":`, getErrorMessage(err));
     }
   }
 
@@ -375,7 +426,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     client.publish(queryTopic, queryPayload, { qos: 0 });
   }
 
-  async handlePrinterReport(printerId: string, topic: string, payload: any) {
+  async handlePrinterReport(printerId: string, topic: string, payload: AnycubicReportPayload) {
     const data = payload?.data;
     if (!data && payload?.state === undefined) return;
 
@@ -383,7 +434,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     const topicParts = topic.split('/');
     const reportType = topicParts[topicParts.length - 2] || payload?.type || 'info';
 
-    const updateData: any = {
+    const updateData: Prisma.PrinterUpdateInput = {
       lastSeenAt: new Date(),
     };
 
@@ -567,6 +618,10 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
+  /**
+   * Printer telemetry only tracks print jobs. Order status is changed manually
+   * until a proper order <-> print job sync is designed.
+   */
   private async handlePrintStarted(printerId: string, filename?: string) {
     const activeJob = await this.prisma.printJob.findFirst({
       where: {
@@ -584,11 +639,6 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
           startedAt: activeJob.startedAt || new Date(),
           filename: filename || activeJob.filename,
         },
-      });
-
-      await this.prisma.order.update({
-        where: { id: activeJob.orderId },
-        data: { status: OrderStatus.PRINTING },
       });
     }
   }
@@ -610,20 +660,6 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
           finishedAt: new Date(),
         },
       });
-
-      const remainingUnfinishedJobs = await this.prisma.printJob.count({
-        where: {
-          orderId: activeJob.orderId,
-          status: { in: [PrintJobStatus.QUEUED, PrintJobStatus.PRINTING, PrintJobStatus.PAUSED] },
-        },
-      });
-
-      if (remainingUnfinishedJobs === 0) {
-        await this.prisma.order.update({
-          where: { id: activeJob.orderId },
-          data: { status: OrderStatus.PRINTED },
-        });
-      }
     }
   }
 
@@ -795,8 +831,8 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         this.lastNotifiedStart.delete(printerId);
         this.printStartTimes.delete(printerId);
       }
-    } catch (err: any) {
-      this.logger.error(`Error handling status transition for Anycubic printer ${printerId}:`, err?.message || err);
+    } catch (err) {
+      this.logger.error(`Error handling status transition for Anycubic printer ${printerId}:`, getErrorMessage(err));
     }
   }
 
@@ -810,15 +846,15 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
     let creds: AnycubicCredentials;
     try {
       creds = await this.doHandshake(cleanIp);
-    } catch (err: any) {
+    } catch (err) {
       return {
         success: false,
-        message: `Handshake failed: ${err.message}`,
+        message: `Handshake failed: ${getErrorMessage(err)}`,
       };
     }
 
     return new Promise((resolve) => {
-      const client = mqtt.connect({
+      const options: PrinterMqttClientOptions = {
         host: cleanIp,
         port: 9883,
         family: 4,
@@ -837,7 +873,9 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
           checkServerIdentity: () => undefined,
           family: 4,
         },
-      });
+      };
+
+      const client = mqtt.connect(options);
 
       const timeout = setTimeout(() => {
         try {
@@ -861,7 +899,7 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         client.once('message', (_topic: string, message: Buffer) => {
           clearTimeout(timeout);
           try {
-            const payload = JSON.parse(message.toString());
+            const payload: AnycubicReportPayload = JSON.parse(message.toString());
             const data = payload.data || {};
             const project = data.project || data.last_project || {};
             const temp = data.temp || {};
@@ -903,18 +941,21 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
         }, 2000);
       });
 
-      client.on('error', (err: any) => {
+      client.on('error', (err) => {
         clearTimeout(timeout);
+
         try {
           client.end(true);
         } catch {}
 
+        const errorCode = getErrorCode(err);
         let hint = err.message;
-        if (err.code === 'EHOSTUNREACH') {
+
+        if (errorCode === 'EHOSTUNREACH') {
           hint = `Хост ${cleanIp} недоступен. Проверьте подсеть Wi-Fi.`;
-        } else if (err.code === 'ECONNREFUSED') {
+        } else if (errorCode === 'ECONNREFUSED') {
           hint = `Отказ в соединении на порту 9883. Проверьте LAN Mode в настройках принтера.`;
-        } else if (err.code === 'ETIMEDOUT') {
+        } else if (errorCode === 'ETIMEDOUT') {
           hint = `Таймаут подключения к ${cleanIp}:9883.`;
         }
 

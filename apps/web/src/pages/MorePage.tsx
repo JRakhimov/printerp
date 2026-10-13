@@ -83,7 +83,7 @@ export const MorePage: React.FC<MorePageProps> = ({ resetSignal }) => {
   }
 
   const handleCloseApp = () => {
-    const tg = (window as any).Telegram?.WebApp;
+    const tg = window.Telegram?.WebApp;
     if (tg && typeof tg.close === 'function') {
       tg.close();
     } else {

@@ -3,7 +3,7 @@ import { PrintersService } from '../src/modules/printers/printers.service';
 import { BambuMqttService } from '../src/modules/printers/bambu-mqtt.service';
 import { AnycubicMqttService } from '../src/modules/printers/anycubic-mqtt.service';
 import { PrismaService } from '../src/database/prisma.service';
-import { PrinterManufacturer, PrinterIntegrationType, PrintJobStatus, OrderStatus } from '@printerp/shared';
+import { PrinterManufacturer, PrinterIntegrationType, PrintJobStatus } from '@printerp/shared';
 
 describe('PrintersService & BambuMqttService', () => {
   let printersService: PrintersService;
@@ -161,7 +161,7 @@ describe('PrintersService & BambuMqttService', () => {
     expect(mockBambuMqttService.connectPrinter).not.toHaveBeenCalled();
   });
 
-  it('should update print job status and sync order to PRINTING/PRINTED', async () => {
+  it('should update print job status without changing the order status', async () => {
     mockPrismaService.printJob.findUnique.mockResolvedValue({
       id: 'job-10',
       orderId: 'order-20',
@@ -174,15 +174,15 @@ describe('PrintersService & BambuMqttService', () => {
       status: PrintJobStatus.PRINTING,
     });
 
-    mockPrismaService.order.update.mockResolvedValue({ id: 'order-20', status: OrderStatus.PRINTING });
     mockPrismaService.printer.update.mockResolvedValue({ id: 'printer-1', lastStatus: 'RUNNING' });
 
     const updated = await printersService.updatePrintJobStatus('job-10', PrintJobStatus.PRINTING);
 
     expect(updated.status).toBe(PrintJobStatus.PRINTING);
-    expect(mockPrismaService.order.update).toHaveBeenCalledWith({
-      where: { id: 'order-20' },
-      data: { status: OrderStatus.PRINTING },
+    expect(mockPrismaService.printer.update).toHaveBeenCalledWith({
+      where: { id: 'printer-1' },
+      data: { lastStatus: 'RUNNING' },
     });
+    expect(mockPrismaService.order.update).not.toHaveBeenCalled();
   });
 });

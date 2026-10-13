@@ -12,6 +12,8 @@ import { Response } from 'express';
 import { EventEmitter } from 'events';
 import { PrismaService } from '../../database/prisma.service';
 import { AnycubicMqttService } from './anycubic-mqtt.service';
+import { getErrorMessage } from '../../common/utils/error-message';
+import { CameraStatusResponse, PrinterManufacturer } from '@printerp/shared';
 
 interface BambuCameraSession {
   socket: tls.TLSSocket | null;
@@ -210,7 +212,7 @@ export class PrinterCameraService implements OnModuleDestroy {
         this.processBambuChunk(session, chunk);
       });
 
-      socket.on('error', (err: any) => {
+      socket.on('error', (err) => {
         this.logger.warn(`Bambu camera TLS error for "${printer.name}": ${err.message}`);
         session.connecting = false;
         if (!resolved) {
@@ -455,7 +457,7 @@ export class PrinterCameraService implements OnModuleDestroy {
         }
       });
 
-      proc.on('error', (err: any) => {
+      proc.on('error', (err) => {
         this.logger.warn(`FFmpeg process error for "${printer.name}": ${err.message}`);
         session.lastError = `FFmpeg: ${err.message}`;
         session.ffmpegProcess = null;
@@ -470,9 +472,11 @@ export class PrinterCameraService implements OnModuleDestroy {
           session.emitter.emit('streamError', session.lastError);
         }
       });
-    } catch (err: any) {
-      this.logger.error(`Failed to spawn ffmpeg: ${err.message}`);
-      throw new ServiceUnavailableException(`Failed to launch camera decoder: ${err.message}`);
+    } catch (err) {
+      const errorMessage = getErrorMessage(err);
+
+      this.logger.error(`Failed to spawn ffmpeg: ${errorMessage}`);
+      throw new ServiceUnavailableException(`Failed to launch camera decoder: ${errorMessage}`);
     }
   }
 
@@ -595,8 +599,8 @@ export class PrinterCameraService implements OnModuleDestroy {
             },
             session,
           );
-        } catch (err: any) {
-          this.logger.error(`Failed to connect to Bambu camera stream: ${err.message}`);
+        } catch (err) {
+          this.logger.error(`Failed to connect to Bambu camera stream: ${getErrorMessage(err)}`);
         }
       }
 
@@ -642,16 +646,18 @@ export class PrinterCameraService implements OnModuleDestroy {
         try {
           try {
             await this.anycubicMqttService.setCameraCapture(printer.id, true);
-          } catch (err: any) {
-            this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${err.message}`);
+          } catch (err) {
+            this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${getErrorMessage(err)}`);
           }
           await this.startAnycubicFfmpeg(
             { id: printer.id, name: printer.name, ipAddress: printer.ipAddress },
             session,
           );
-        } catch (err: any) {
-          this.logger.error(`Failed to start Anycubic camera stream: ${err.message}`);
-          throw new ServiceUnavailableException(err.message);
+        } catch (err) {
+          const errorMessage = getErrorMessage(err);
+
+          this.logger.error(`Failed to start Anycubic camera stream: ${errorMessage}`);
+          throw new ServiceUnavailableException(errorMessage);
         }
       }
 
@@ -781,8 +787,8 @@ export class PrinterCameraService implements OnModuleDestroy {
 
       try {
         await this.anycubicMqttService.setCameraCapture(printer.id, true);
-      } catch (err: any) {
-        this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${err.message}`);
+      } catch (err) {
+        this.logger.warn(`Could not start Anycubic camera capture via MQTT: ${getErrorMessage(err)}`);
       }
 
       let frame: Buffer;
@@ -803,7 +809,7 @@ export class PrinterCameraService implements OnModuleDestroy {
   /**
    * Get camera status and stream statistics
    */
-  async getCameraStatus(printerId: string) {
+  async getCameraStatus(printerId: string): Promise<CameraStatusResponse> {
     const printer = await this.prisma.printer.findUnique({
       where: { id: printerId },
     });
@@ -834,16 +840,16 @@ export class PrinterCameraService implements OnModuleDestroy {
 
     return {
       printerId,
-      manufacturer: printer.manufacturer,
+      manufacturer: printer.manufacturer as PrinterManufacturer,
       isStreaming,
       activeViewers,
       hasRecentFrame,
-      lastFrameAt: lastFrameTime > 0 ? new Date(lastFrameTime) : null,
+      lastFrameAt: lastFrameTime > 0 ? new Date(lastFrameTime).toISOString() : null,
       streamUrl: `/api/printers/${printerId}/camera/stream`,
       snapshotUrl: `/api/printers/${printerId}/camera/snapshot`,
       rateLimited: isRateLimited,
-      rateLimitedUntil: isRateLimited ? new Date(anycubicSession!.rateLimitedUntil) : null,
-      errorMessage: !isBambu ? anycubicSession?.lastError : null,
+      rateLimitedUntil: isRateLimited ? new Date(anycubicSession!.rateLimitedUntil).toISOString() : null,
+      errorMessage: !isBambu ? anycubicSession?.lastError ?? null : null,
     };
   }
 

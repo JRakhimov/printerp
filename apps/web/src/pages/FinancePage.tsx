@@ -35,10 +35,11 @@ import {
   Instagram,
   Laptop,
   Megaphone,
+  type LucideIcon,
 } from 'lucide-react';
 import { ExpenseCategory } from '@printerp/shared';
 
-const categoryLabels: Record<string, { label: string; icon: any; color: string }> = {
+const categoryLabels: Record<string, { label: string; icon: LucideIcon; color: string }> = {
   FILAMENT: { label: 'Филамент', icon: Layers, color: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20' },
   ELECTRICITY: { label: 'Электричество', icon: Zap, color: 'text-amber-400 bg-amber-500/10 border-amber-500/20' },
   PRINTER_PARTS: { label: 'Запчасти принтера', icon: Wrench, color: 'text-sky-400 bg-sky-500/10 border-sky-500/20' },

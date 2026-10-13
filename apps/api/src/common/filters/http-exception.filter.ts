@@ -7,6 +7,12 @@ import {
 } from '@nestjs/common';
 import { Response } from 'express';
 
+interface HttpExceptionBody {
+  message?: string | string[];
+  error?: string;
+  details?: unknown;
+}
+
 @Catch()
 export class HttpExceptionFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost) {
@@ -15,12 +21,12 @@ export class HttpExceptionFilter implements ExceptionFilter {
 
     let status = HttpStatus.INTERNAL_SERVER_ERROR;
     let errorCode = 'INTERNAL_SERVER_ERROR';
-    let errorMessage = 'An unexpected error occurred';
+    let errorMessage: string | string[] = 'An unexpected error occurred';
     let details: unknown = undefined;
 
     if (exception instanceof HttpException) {
       status = exception.getStatus();
-      const res = exception.getResponse() as any;
+      const res: string | HttpExceptionBody = exception.getResponse();
 
       if (typeof res === 'string') {
         errorMessage = res;

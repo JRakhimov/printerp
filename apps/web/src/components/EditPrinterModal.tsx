@@ -16,6 +16,7 @@ import {
   Activity,
   Clock,
 } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface EditPrinterModalProps {
   printer: PrinterResponse | null;
@@ -99,10 +100,10 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
         success: res.success,
         message: res.message,
       });
-    } catch (err: any) {
+    } catch (err) {
       setTestResult({
         success: false,
-        message: err.response?.data?.message || 'Ошибка подключения. Проверьте IP и статус принтера.',
+        message: formatApiError(err, 'Ошибка подключения. Проверьте IP и статус принтера.'),
       });
     }
   };
@@ -115,9 +116,9 @@ export const EditPrinterModal: React.FC<EditPrinterModalProps> = ({
       }
       await updatePrinter.mutateAsync({ id: printer.id, dto });
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update printer:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления принтера');
+      alert(formatApiError(err, 'Ошибка обновления принтера'));
     }
   };
 

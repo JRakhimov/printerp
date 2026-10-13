@@ -24,6 +24,7 @@ import {
   Eye,
   ChevronLeft,
 } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface ProjectDetailModalProps {
   projectId: string | null;
@@ -149,9 +150,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
         },
       });
       setIsEditing(false);
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update project:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления модели');
+      alert(formatApiError(err, 'Ошибка обновления модели'));
     }
   };
 
@@ -161,9 +162,9 @@ export const ProjectDetailModal: React.FC<ProjectDetailModalProps> = ({
       try {
         await deleteProject.mutateAsync(project.id);
         onClose();
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to delete project:', err);
-        alert(err.response?.data?.message || 'Ошибка удаления модели');
+        alert(formatApiError(err, 'Ошибка удаления модели'));
       }
     }
   };

@@ -20,6 +20,7 @@ import {
   MapPin,
   Trash2,
 } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface ClientDetailModalProps {
   clientId: string | null;
@@ -90,9 +91,9 @@ export const ClientDetailModal: React.FC<ClientDetailModalProps> = ({
         },
       });
       alert('Данные клиента успешно сохранены!');
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update client details:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления данных клиента');
+      alert(formatApiError(err, 'Ошибка обновления данных клиента'));
     }
   };
 

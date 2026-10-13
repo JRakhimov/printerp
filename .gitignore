@@ -20,6 +20,11 @@ build/
 packages/*/dist/
 apps/*/dist/
 
+# Compiled test output (tests are run from TypeScript sources by ts-jest)
+apps/*/test/**/*.js
+apps/*/test/**/*.js.map
+apps/*/test/**/*.d.ts
+
 # System Files
 .DS_Store
 Thumbs.db

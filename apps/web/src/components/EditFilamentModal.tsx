@@ -5,6 +5,7 @@ import { UpdateFilamentSchema, UpdateFilamentDto, FilamentMaterial } from '@prin
 import { Filament, useUpdateFilament, useDeleteFilament } from '../hooks/useFilaments';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { X, Palette, Loader2, Trash2, Pipette } from 'lucide-react';
+import { formatApiError } from '../lib/api-error';
 
 interface EditFilamentModalProps {
   filament: Filament | null;
@@ -53,9 +54,9 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
         dto: data,
       });
       onClose();
-    } catch (err: any) {
+    } catch (err) {
       console.error('Failed to update filament:', err);
-      alert(err.response?.data?.message || 'Ошибка обновления филамента');
+      alert(formatApiError(err, 'Ошибка обновления филамента'));
     }
   };
 
@@ -64,9 +65,9 @@ export const EditFilamentModal: React.FC<EditFilamentModalProps> = ({ filament, 
       try {
         await deleteFilament.mutateAsync(filament.id);
         onClose();
-      } catch (err: any) {
+      } catch (err) {
         console.error('Failed to delete filament:', err);
-        alert(err.response?.data?.message || 'Ошибка удаления филамента');
+        alert(formatApiError(err, 'Ошибка удаления филамента'));
       }
     }
   };

@@ -3,7 +3,7 @@ import { useOrders, OrderStatus } from '../hooks/useOrders';
 import { useFinancialSummary } from '../hooks/useFinance';
 import { usePrinters } from '../hooks/usePrinters';
 import { useTimeCycle, formatEstimatedFinish } from '../hooks/useTimeCycle';
-import { getClientDisplayName } from '@printerp/shared';
+import { PrinterResponse, getClientDisplayName } from '@printerp/shared';
 import { OrderDetailModal } from '../components/OrderDetailModal';
 import { PrinterCameraModal } from '../components/PrinterCameraModal';
 import {
@@ -30,7 +30,7 @@ export const HomePage: React.FC = () => {
   const { data: summary } = useFinancialSummary();
   const { data: printers } = usePrinters();
   const [selectedOrderId, setSelectedOrderId] = useState<string | null>(null);
-  const [cameraPrinter, setCameraPrinter] = useState<any | null>(null);
+  const [cameraPrinter, setCameraPrinter] = useState<PrinterResponse | null>(null);
 
   // Active orders count & printing status count
   const activeOrders = orders?.filter((o) => o.status !== OrderStatus.COMPLETED && o.status !== OrderStatus.CANCELLED) || [];

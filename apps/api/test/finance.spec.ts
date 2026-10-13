@@ -80,7 +80,7 @@ describe('FinanceService', () => {
       expect(result.id).toBe('tx-1');
     });
 
-    it('should extract string createdById if userId is passed as user object', async () => {
+    it('should store null createdById when no user is provided', async () => {
       const dto = {
         type: TransactionType.EXPENSE,
         category: ExpenseCategory.SOFT,
@@ -94,14 +94,13 @@ describe('FinanceService', () => {
         date: new Date(),
       });
 
-      const userObject = { id: 'user-uuid-123', role: 'OWNER' };
-      const result = await service.createTransaction(dto, userObject as any);
+      const result = await service.createTransaction(dto);
 
       expect(mockPrismaService.transaction.create).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({
             category: ExpenseCategory.SOFT,
-            createdById: 'user-uuid-123',
+            createdById: null,
           }),
         }),
       );
@@ -117,12 +116,14 @@ describe('FinanceService', () => {
           calculatedPrice: 120000,
           finalPrice: 120000,
           payments: [{ amount: 120000 }],
+          items: [],
         },
         {
           calculatedCost: 30000,
           calculatedPrice: 80000,
           finalPrice: 80000,
           payments: [{ amount: 40000 }],
+          items: [],
         },
       ]);
 
@@ -158,6 +159,45 @@ describe('FinanceService', () => {
       expect(summary.scrapLoss?.totalScrapCost).toBe(25000);
       expect(summary.scrapLoss?.incidentsCount).toBe(2);
       expect(summary.scrapLoss?.scrapRatePercentage).toBeDefined();
+    });
+
+    it('should count debt per order and treat a zero final price as a free order', async () => {
+      mockPrismaService.order.findMany.mockResolvedValue([
+        {
+          calculatedCost: 10000,
+          finalPrice: 100000,
+          payments: [{ amount: 150000 }], // overpaid by 50000
+          items: [],
+        },
+        {
+          calculatedCost: 10000,
+          finalPrice: 100000,
+          payments: [],
+          items: [],
+        },
+        {
+          calculatedCost: 10000,
+          finalPrice: 0, // given away for free
+          payments: [],
+          items: [],
+        },
+      ]);
+
+      mockPrismaService.transaction.aggregate
+        .mockResolvedValueOnce({ _sum: { amount: 0 } })
+        .mockResolvedValueOnce({ _sum: { amount: 0 } });
+
+      mockPrismaService.filament.findMany.mockResolvedValue([]);
+      mockPrismaService.project.findMany.mockResolvedValue([]);
+      mockPrismaService.scrapRecord.aggregate.mockResolvedValue({
+        _sum: { grams: 0, cost: 0 },
+        _count: { id: 0 },
+      });
+
+      const summary = await service.getSummary();
+
+      expect(summary.revenue).toBe(200000);
+      expect(summary.unpaidBalance).toBe(100000);
     });
   });
 
