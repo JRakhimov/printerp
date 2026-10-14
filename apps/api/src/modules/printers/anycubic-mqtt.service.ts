@@ -8,6 +8,7 @@ import { TelegramBotService } from '../telegram-bot/telegram-bot.service';
 import { PrintJobStatus, PrinterManufacturer } from '@printerp/shared';
 import { getErrorCode, getErrorMessage } from '../../common/utils/error-message';
 import { PrinterMqttClientOptions } from './mqtt-options';
+import { isServicePrintFile } from './service-print-files';
 
 /**
  * Print job section of an Anycubic `info` / `print` report.
@@ -675,6 +676,11 @@ export class AnycubicMqttService implements OnModuleInit, OnModuleDestroy {
       currentFile?: string;
     },
   ) {
+    // Filament load/unload and similar routines look like prints but must not spam the bot
+    if (isServicePrintFile(telemetry.currentFile)) {
+      return;
+    }
+
     try {
       const pInfo = this.printerInfo.get(printerId) || { name: 'Anycubic Принтер', model: 'Anycubic Kobra X' };
       const printerName = pInfo.name;

@@ -531,5 +531,33 @@ describe('Printer Status Telegram Notifications', () => {
         }),
       );
     });
+
+    it('should not notify about filament load/unload routines (Cap_plate)', async () => {
+      const notifySpy = jest.spyOn(telegramBotService, 'notifyPrinterStatus').mockResolvedValue(undefined);
+      const topic = 'anycubic/anycubicCloud/v1/printer/public/20030/dev1/info/report';
+
+      mockPrismaService.printer.update.mockResolvedValue({});
+      mockPrismaService.printer.findUnique.mockResolvedValue({
+        initialWorkHours: 0,
+        trackedWorkMinutes: 0,
+      });
+
+      await anycubicMqttService.handlePrinterReport('printer-kobra-service', topic, {
+        data: { state: 'free' },
+      });
+
+      await anycubicMqttService.handlePrinterReport('printer-kobra-service', topic, {
+        data: {
+          state: 'busy',
+          project: { filename: 'Cap_plate(01)', print_status: 1, progress: 0 },
+        },
+      });
+
+      await anycubicMqttService.handlePrinterReport('printer-kobra-service', topic, {
+        data: { state: 'free', project: null },
+      });
+
+      expect(notifySpy).not.toHaveBeenCalled();
+    });
   });
 });
